@@ -7,9 +7,9 @@ package ctx
 
 import (
 	"errors"
-	"github.com/xfali/neve/neve-core/container"
-	"github.com/xfali/neve/neve-core/injector"
-	"github.com/xfali/neve/neve-core/processor"
+	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-core/injector"
+	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/xlog"
 	"sync"
 	"sync/atomic"

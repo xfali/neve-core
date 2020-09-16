@@ -7,8 +7,8 @@ package injector
 
 import (
 	"errors"
-	"github.com/xfali/neve/neve-core/container"
-	"github.com/xfali/neve/neve-utils/reflection"
+	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
 )

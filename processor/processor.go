@@ -7,7 +7,7 @@ package processor
 
 import (
 	"github.com/xfali/fig"
-	"github.com/xfali/neve/neve-core/container"
+	"github.com/xfali/neve-core/container"
 	"io"
 )
 

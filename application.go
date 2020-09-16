@@ -7,10 +7,10 @@ package neve
 
 import (
 	"github.com/xfali/fig"
-	"github.com/xfali/neve/neve-core/container"
-	"github.com/xfali/neve/neve-core/ctx"
-	"github.com/xfali/neve/neve-core/processor"
-	"github.com/xfali/neve/neve-utils/log"
+	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-core/ctx"
+	"github.com/xfali/neve-core/processor"
+	"github.com/xfali/neve-utils/log"
 	"github.com/xfali/xlog"
 	"os"
 	"os/signal"
