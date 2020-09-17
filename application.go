@@ -18,9 +18,13 @@ import (
 
 type Application interface {
 	// 注册对象
+	// 支持注册
+	//  1、interface、struct指针，注册名称使用【类型名称】；
+	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
 	RegisterBean(o interface{}) error
 
 	// 使用指定名称注册对象
+	// 支持注册struct指针、struct/interface的构造函数 func() TYPE
 	RegisterBeanByName(name string, o interface{}) error
 
 	// 启动应用容器

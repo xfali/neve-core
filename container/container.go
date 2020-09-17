@@ -49,6 +49,9 @@ func (c *DefaultContainer) RegisterByName(name string, o interface{}) error {
 		if name == "" {
 			name = beanDefinition.Name()
 		}
+		if name == "" {
+			return errors.New("Cannot get bean name. ")
+		}
 	}
 	_, loaded := c.objectPool.LoadOrStore(name, beanDefinition)
 	if loaded {

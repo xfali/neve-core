@@ -406,3 +406,63 @@ func TestInjectFunc(t *testing.T) {
 		}
 	})
 }
+
+func checkErr(err error, t *testing.T) {
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInjectComplex(t *testing.T) {
+	type injectBean struct {
+		A   a      `inject:""`
+		B   a      `inject:"b"`
+		Bs  *bImpl `inject:"b"`
+		Bf  a      `inject:""`
+		Bfs *bImpl `inject:"c"`
+	}
+
+	dest := &injectBean{}
+	c := container.New()
+	i := injector.New()
+
+	// 此处注册名称为aImpl类型名
+	checkErr(c.Register(&aImpl{}), t)
+	// 此处注册名称为b类型名
+	checkErr(c.RegisterByName("b", &bImpl{i : 2}), t)
+	//注意：此处注册的名称为a的类型名
+	checkErr(c.Register(func() a {
+		return &bImpl{i : 10}
+	}), t)
+	// 此处注册名称为c
+	checkErr(c.RegisterByName("c", func() *bImpl {
+		return &bImpl{i : 11}
+	}), t)
+
+	var errA a = &bImpl{i: 3}
+	// 此处注册名称为bImpl类型名称
+	checkErr(c.Register(errA), t)
+
+	checkErr(i.Inject(c, dest), t)
+
+
+	if dest.A.Get() != 10 {
+		t.Fatal("expect 10 but get: ", dest.A.Get())
+	}
+
+	if dest.B.Get() != 2 {
+		t.Fatal("expect 2 but get: ", dest.B.Get())
+	}
+
+	if dest.Bs.Get() != 2 {
+		t.Fatal("expect 2 but get: ", dest.Bs.Get())
+	}
+
+	if dest.Bf.Get() != 10 {
+		t.Fatal("expect 10 but get: ", dest.Bs.Get())
+	}
+
+	if dest.Bfs.Get() != 11 {
+		t.Fatal("expect 11 but get: ", dest.Bs.Get())
+	}
+}

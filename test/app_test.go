@@ -39,7 +39,7 @@ type injectBean struct {
 	A  a      `inject:""`
 	B  a      `inject:"b"`
 	BS *bImpl `inject:"b"`
-	Bf a      `inject:""`
+	Bf a      `inject:"c"`
 }
 
 func TestApp(t *testing.T) {
@@ -60,7 +60,8 @@ func TestApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBean(func() a {
+	// 注意，此处会使用a的类型名称注册构造方法
+	err = app.RegisterBeanByName("c", func() a {
 		return &bImpl{V: "hello world"}
 	})
 	if err != nil {
@@ -103,6 +104,9 @@ func (p *testProcessor) Process() error {
 	}
 	if v.BS.Get() != "this is a test" {
 		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
+	}
+	if v.Bf.Get() != "hello world" {
+		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
 	}
 	xlog.Infoln("all pass, exit")
 	os.Exit(0)
