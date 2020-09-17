@@ -60,7 +60,7 @@ func TestApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 注意，此处会使用a的类型名称注册构造方法
+	// 注意，此处如果使用RegisterBean会使用a的类型名称注册构造方法
 	err = app.RegisterBeanByName("c", func() a {
 		return &bImpl{V: "hello world"}
 	})
