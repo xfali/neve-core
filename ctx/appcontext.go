@@ -60,9 +60,9 @@ type ApplicationContextListener interface {
 	OnEvent(e ApplicationEvent, ctx ApplicationContext)
 }
 
-type Opt func(*DefaultApplicationContext)
+type Opt func(*defaultApplicationContext)
 
-type DefaultApplicationContext struct {
+type defaultApplicationContext struct {
 	config    fig.Properties
 	logger    xlog.Logger
 	container container.Container
@@ -77,8 +77,8 @@ type DefaultApplicationContext struct {
 	curState int32
 }
 
-func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *DefaultApplicationContext {
-	ret := &DefaultApplicationContext{
+func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultApplicationContext {
+	ret := &defaultApplicationContext{
 		config:    config,
 		logger:    xlog.GetLogger(),
 		container: container.New(),
@@ -93,7 +93,7 @@ func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *DefaultAp
 	return ret
 }
 
-func (ctx *DefaultApplicationContext) Close() (err error) {
+func (ctx *defaultApplicationContext) Close() (err error) {
 	func() {
 		ctx.processorsLock.Lock()
 		defer ctx.processorsLock.Unlock()
@@ -108,15 +108,15 @@ func (ctx *DefaultApplicationContext) Close() (err error) {
 	return
 }
 
-func (ctx *DefaultApplicationContext) isInitializing() bool {
+func (ctx *defaultApplicationContext) isInitializing() bool {
 	return atomic.LoadInt32(&ctx.curState) == statusInitializing
 }
 
-func (ctx *DefaultApplicationContext) RegisterBean(o interface{}) error {
+func (ctx *defaultApplicationContext) RegisterBean(o interface{}) error {
 	return ctx.RegisterBeanByName("", o)
 }
 
-func (ctx *DefaultApplicationContext) RegisterBeanByName(name string, o interface{}) error {
+func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interface{}) error {
 	if ctx.isInitializing() {
 		return errors.New("Initializing, cannot register new object. ")
 	}
@@ -151,7 +151,7 @@ func (ctx *DefaultApplicationContext) RegisterBeanByName(name string, o interfac
 	return nil
 }
 
-func (ctx *DefaultApplicationContext) addListener(l ApplicationContextListener, withLock bool) {
+func (ctx *defaultApplicationContext) addListener(l ApplicationContextListener, withLock bool) {
 	if !withLock {
 		ctx.listeners = append(ctx.listeners, l)
 		return
@@ -163,7 +163,7 @@ func (ctx *DefaultApplicationContext) addListener(l ApplicationContextListener, 
 	ctx.listeners = append(ctx.listeners, l)
 }
 
-func (ctx *DefaultApplicationContext) addProcessor(p processor.Processor, withLock bool) error {
+func (ctx *defaultApplicationContext) addProcessor(p processor.Processor, withLock bool) error {
 	if !withLock {
 		ctx.processors = append(ctx.processors, p)
 		return p.Init(ctx.config, ctx.container)
@@ -176,23 +176,23 @@ func (ctx *DefaultApplicationContext) addProcessor(p processor.Processor, withLo
 	return p.Init(ctx.config, ctx.container)
 }
 
-func (ctx *DefaultApplicationContext) GetBean(name string) (interface{}, bool) {
+func (ctx *defaultApplicationContext) GetBean(name string) (interface{}, bool) {
 	return ctx.container.Get(name)
 }
 
-func (ctx *DefaultApplicationContext) GetBeanByType(o interface{}) bool {
+func (ctx *defaultApplicationContext) GetBeanByType(o interface{}) bool {
 	return ctx.container.GetByType(o)
 }
 
-func (ctx *DefaultApplicationContext) AddProcessor(p processor.Processor) {
+func (ctx *defaultApplicationContext) AddProcessor(p processor.Processor) {
 	ctx.processors = append(ctx.processors, p)
 }
 
-func (ctx *DefaultApplicationContext) AddListener(l ApplicationContextListener) {
+func (ctx *defaultApplicationContext) AddListener(l ApplicationContextListener) {
 	ctx.addListener(l, true)
 }
 
-func (ctx *DefaultApplicationContext) NotifyListeners(e ApplicationEvent) {
+func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 	if ApplicationEventInitialized == e {
 		// 第一次初始化，注入所有对象
 		if atomic.CompareAndSwapInt32(&ctx.curState, statusNone, statusInitializing) {
@@ -217,7 +217,7 @@ func (ctx *DefaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 	}
 }
 
-func (ctx *DefaultApplicationContext) processBean() error {
+func (ctx *defaultApplicationContext) processBean() error {
 	ctx.container.Scan(func(key string, value container.BeanDefinition) bool {
 		if value.IsObject() {
 			for _, processor := range ctx.processors {
@@ -240,7 +240,7 @@ func (ctx *DefaultApplicationContext) processBean() error {
 	return nil
 }
 
-func (ctx *DefaultApplicationContext) injectAll() {
+func (ctx *defaultApplicationContext) injectAll() {
 	ctx.container.Scan(func(key string, value container.BeanDefinition) bool {
 		if value.IsObject() {
 			err := ctx.injector.Inject(ctx.container, value.Interface())
@@ -253,19 +253,19 @@ func (ctx *DefaultApplicationContext) injectAll() {
 }
 
 func OptSetContainer(container container.Container) Opt {
-	return func(context *DefaultApplicationContext) {
+	return func(context *defaultApplicationContext) {
 		context.container = container
 	}
 }
 
 func OptSetLogger(logger xlog.Logger) Opt {
-	return func(context *DefaultApplicationContext) {
+	return func(context *defaultApplicationContext) {
 		context.logger = logger
 	}
 }
 
 func OptSetInjector(injector injector.Injector) Opt {
-	return func(context *DefaultApplicationContext) {
+	return func(context *defaultApplicationContext) {
 		context.injector = injector
 	}
 }

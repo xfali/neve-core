@@ -21,16 +21,23 @@ type Injector interface {
 	Inject(container container.Container, o interface{}) error
 }
 
-type DefaultInjector struct {
+type Actuator func(c container.Container, name string, v reflect.Value) error
+
+type defaultInjector struct {
 	logger    xlog.Logger
+	actuators map[reflect.Kind]Actuator
 	recursive bool
 }
 
-type Opt func(*DefaultInjector)
+type Opt func(*defaultInjector)
 
-func New(opts ...Opt) *DefaultInjector {
-	ret := &DefaultInjector{
+func New(opts ...Opt) *defaultInjector {
+	ret := &defaultInjector{
 		logger: xlog.GetLogger(),
+	}
+	ret.actuators = map[reflect.Kind]Actuator{
+		reflect.Interface: ret.injectInterface,
+		reflect.Struct:    ret.injectStruct,
 	}
 	for _, opt := range opts {
 		opt(ret)
@@ -38,10 +45,10 @@ func New(opts ...Opt) *DefaultInjector {
 	return ret
 }
 
-func (injector *DefaultInjector) Inject(c container.Container, o interface{}) error {
+func (injector *defaultInjector) Inject(c container.Container, o interface{}) error {
 	v := reflect.ValueOf(o)
 	if v.Kind() == reflect.Interface {
-		return injector.injectInterface(c, v, "")
+		return injector.injectInterface(c, "", v)
 	}
 	t := v.Type()
 	if t.Kind() == reflect.Ptr {
@@ -55,7 +62,7 @@ func (injector *DefaultInjector) Inject(c container.Container, o interface{}) er
 	return errors.New("Type Not support. ")
 }
 
-func (injector *DefaultInjector) injectStructFields(c container.Container, v reflect.Value) error {
+func (injector *defaultInjector) injectStructFields(c container.Container, v reflect.Value) error {
 	t := v.Type()
 	if t.Kind() != reflect.Struct {
 		return errors.New("result must be struct ptr")
@@ -71,17 +78,13 @@ func (injector *DefaultInjector) injectStructFields(c container.Container, v ref
 				fieldType = fieldType.Elem()
 			}
 			if fieldValue.CanSet() {
-				switch fieldType.Kind() {
-				case reflect.Interface:
-					err := injector.injectInterface(c, fieldValue, tag)
-					if err != nil {
-						injector.logger.Errorf("Inject Field error: [%s: %s] %s\n ", reflection.GetTypeName(t), field.Name, err.Error())
-					}
-				case reflect.Struct:
-					err := injector.injectStruct(c, fieldValue, tag)
-					if err != nil {
-						injector.logger.Errorf("Inject Field error: [%s: %s] %s\n ", reflection.GetTypeName(t), field.Name, err.Error())
-					}
+				actuate := injector.actuators[fieldType.Kind()]
+				if actuate == nil {
+					return errors.New("Cannot inject this kind: " + fieldType.Name())
+				}
+				err := actuate(c, tag, fieldValue)
+				if err != nil {
+					injector.logger.Errorf("Inject Field error: [%s: %s] %s\n ", reflection.GetTypeName(t), field.Name, err.Error())
 				}
 			} else {
 				injector.logger.Errorf("Inject failed: Field cannot SET [%s: %s]\n ", reflection.GetTypeName(t), field.Name)
@@ -92,7 +95,7 @@ func (injector *DefaultInjector) injectStructFields(c container.Container, v ref
 	return nil
 }
 
-func (injector *DefaultInjector) injectInterface(c container.Container, v reflect.Value, name string) error {
+func (injector *defaultInjector) injectInterface(c container.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
 		name = reflection.GetTypeName(vt)
@@ -132,7 +135,7 @@ func (injector *DefaultInjector) injectInterface(c container.Container, v reflec
 	return errors.New("Inject nothing, cannot find any Implementation: " + reflection.GetTypeName(vt))
 }
 
-func (injector *DefaultInjector) injectStruct(c container.Container, v reflect.Value, name string) error {
+func (injector *defaultInjector) injectStruct(c container.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
 		name = reflection.GetTypeName(vt)
@@ -158,13 +161,22 @@ func (injector *DefaultInjector) injectStruct(c container.Container, v reflect.V
 }
 
 func OptSetLogger(v xlog.Logger) Opt {
-	return func(injector *DefaultInjector) {
+	return func(injector *defaultInjector) {
 		injector.logger = v
 	}
 }
 
 func OptSetRecursive(recursive bool) Opt {
-	return func(injector *DefaultInjector) {
+	return func(injector *defaultInjector) {
 		injector.recursive = recursive
+	}
+}
+
+// 配置注入执行器，使其能注入更多类型
+func OptSetActuator(kind reflect.Kind, actuator Actuator) Opt {
+	return func(injector *defaultInjector) {
+		if actuator != nil {
+			injector.actuators[kind] = actuator
+		}
 	}
 }

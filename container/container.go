@@ -22,19 +22,19 @@ type Container interface {
 	Scan(func(key string, value BeanDefinition) bool)
 }
 
-type DefaultContainer struct {
+type defaultContainer struct {
 	objectPool sync.Map
 }
 
-func New() *DefaultContainer {
-	return &DefaultContainer{}
+func New() *defaultContainer {
+	return &defaultContainer{}
 }
 
-func (c *DefaultContainer) Register(o interface{}) error {
+func (c *defaultContainer) Register(o interface{}) error {
 	return c.RegisterByName("", o)
 }
 
-func (c *DefaultContainer) RegisterByName(name string, o interface{}) error {
+func (c *defaultContainer) RegisterByName(name string, o interface{}) error {
 	beanDefinition, err := createBeanDefinition(o)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (c *DefaultContainer) RegisterByName(name string, o interface{}) error {
 	return nil
 }
 
-func (c *DefaultContainer) Get(name string) (BeanDefinition, bool) {
+func (c *defaultContainer) Get(name string) (BeanDefinition, bool) {
 	o, load := c.objectPool.Load(name)
 	if load {
 		return o.(BeanDefinition), load
@@ -68,7 +68,7 @@ func (c *DefaultContainer) Get(name string) (BeanDefinition, bool) {
 	return nil, false
 }
 
-func (c *DefaultContainer) GetByType(o interface{}) bool {
+func (c *defaultContainer) GetByType(o interface{}) bool {
 	v := reflect.ValueOf(o)
 	d, ok := c.Get(reflection.GetTypeName(v.Type()))
 	if ok {
@@ -77,7 +77,7 @@ func (c *DefaultContainer) GetByType(o interface{}) bool {
 	return false
 }
 
-func (c *DefaultContainer) Scan(f func(key string, value BeanDefinition) bool) {
+func (c *defaultContainer) Scan(f func(key string, value BeanDefinition) bool) {
 	c.objectPool.Range(func(key, value interface{}) bool {
 		return f(key.(string), value.(BeanDefinition))
 	})

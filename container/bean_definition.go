@@ -34,9 +34,19 @@ type objectDefinition struct {
 	t    reflect.Type
 }
 
-var beanDefinitionCreators = map[reflect.Kind]func(o interface{}) (BeanDefinition, error){
+type BeanDefinitionCreator func(o interface{}) (BeanDefinition, error)
+
+var beanDefinitionCreators = map[reflect.Kind]BeanDefinitionCreator{
 	reflect.Ptr:  newObjectDefinition,
 	reflect.Func: newFunctionDefinition,
+}
+
+// 注册BeanDefinition创建器，使其能处理更多类型。
+// 默认支持Pointer、Function
+func RegisterBeanDefinitionCreator(kind reflect.Kind, creator BeanDefinitionCreator) {
+	if creator != nil {
+		beanDefinitionCreators[kind] = creator
+	}
 }
 
 func createBeanDefinition(o interface{}) (BeanDefinition, error) {
