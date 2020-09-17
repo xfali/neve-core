@@ -1,0 +1,8 @@
+neven:
+  inject:
+    disable: true
+    workers: 1
+
+userdata:
+  value: "this is a test"
+  gopath: {{.Env.GOPATH}}

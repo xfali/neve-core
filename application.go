@@ -7,9 +7,7 @@ package neve
 
 import (
 	"github.com/xfali/fig"
-	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-core/ctx"
-	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/log"
 	"github.com/xfali/xlog"
 	"os"
@@ -19,14 +17,18 @@ import (
 )
 
 type Application interface {
+	// 注册对象
 	RegisterBean(o interface{}) error
+
+	// 使用指定名称注册对象
 	RegisterBeanByName(name string, o interface{}) error
+
+	// 启动应用容器
 	Run() error
 }
 
 type FileConfigApplication struct {
-	config fig.Properties
-	ctx    ctx.ApplicationContext
+	ctx ctx.ApplicationContext
 }
 
 type Opt func(*FileConfigApplication)
@@ -38,23 +40,14 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 		logger.Fatalln("load config file failed: ", err)
 		return nil
 	}
-	c := container.New()
 	ret := &FileConfigApplication{
-		config: prop,
-		ctx:    ctx.NewDefaultApplicationContext(ctx.OptSetContainer(c)),
+		ctx: ctx.NewDefaultApplicationContext(prop),
 	}
 
 	for _, opt := range opts {
 		opt(ret)
 	}
 
-	for _, v := range processors {
-		err := v.Init(prop, c)
-		if err != nil {
-			logger.Panicln(err)
-		}
-		ret.ctx.AddProcessor(v)
-	}
 	return ret
 }
 
@@ -102,16 +95,6 @@ func HandlerSignal(closers ...func() error) {
 		case syscall.SIGHUP:
 		default:
 			return
-		}
-	}
-}
-
-var processors []processor.Processor
-
-func RegisterProcessor(proc ...processor.Processor) {
-	for _, v := range proc {
-		if v != nil {
-			processors = append(processors, v)
 		}
 	}
 }
