@@ -34,33 +34,35 @@ type objectDefinition struct {
 	t    reflect.Type
 }
 
+var beanDefinitionCreators = map[reflect.Kind]func(o interface{}) (BeanDefinition, error){
+	reflect.Ptr:  newObjectDefinition,
+	reflect.Func: newFunctionDefinition,
+}
+
 func createBeanDefinition(o interface{}) (BeanDefinition, error) {
 	t := reflect.TypeOf(o)
 
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		if t.Kind() == reflect.Ptr {
-			return nil, errors.New("o must be a Pointer but get Pointer's Pointer")
-		}
-		return newObjectDefinition(o), nil
-	} else {
-		err := verifyBeanFunction(t)
-		if err != nil {
-			return nil, err
-		}
-		return newFunctionDefinition(o), nil
+	creator, ok := beanDefinitionCreators[t.Kind()]
+	if !ok || creator == nil {
+		return nil, errors.New("Cannot handle this type: " + reflection.GetTypeName(t))
 	}
 
-	return nil, errors.New("Cannot handle this type: " + reflection.GetTypeName(t))
+	return creator(o)
 }
 
-func newObjectDefinition(o interface{}) *objectDefinition {
+func newObjectDefinition(o interface{}) (BeanDefinition, error) {
 	t := reflect.TypeOf(o)
+	if t.Kind() == reflect.Ptr {
+		t2 := t.Elem()
+		if t2.Kind() == reflect.Ptr {
+			return nil, errors.New("o must be a Pointer but get Pointer's Pointer")
+		}
+	}
 	return &objectDefinition{
 		name: reflection.GetTypeName(t),
 		o:    o,
 		t:    t,
-	}
+	}, nil
 }
 
 func (d *objectDefinition) Type() reflect.Type {
@@ -94,7 +96,7 @@ type functionDefinition struct {
 
 func verifyBeanFunction(ft reflect.Type) error {
 	if ft.Kind() != reflect.Func {
-		return errors.New("Param not function.")
+		return errors.New("Param not function. ")
 	}
 	if ft.NumOut() != 1 {
 		return errors.New("Bean function must have 1 return value: TYPE. ")
@@ -107,8 +109,12 @@ func verifyBeanFunction(ft reflect.Type) error {
 	return nil
 }
 
-func newFunctionDefinition(o interface{}) *functionDefinition {
+func newFunctionDefinition(o interface{}) (BeanDefinition, error) {
 	ft := reflect.TypeOf(o)
+	err := verifyBeanFunction(ft)
+	if err != nil {
+		return nil, err
+	}
 	ot := ft.Out(0)
 	fn := reflect.ValueOf(o)
 	return &functionDefinition{
@@ -116,7 +122,7 @@ func newFunctionDefinition(o interface{}) *functionDefinition {
 		name: reflection.GetTypeName(ot),
 		fn:   fn,
 		t:    ot,
-	}
+	}, nil
 }
 
 func (d *functionDefinition) Type() reflect.Type {

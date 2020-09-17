@@ -39,6 +39,7 @@ type injectBean struct {
 	A  a      `inject:""`
 	B  a      `inject:"b"`
 	BS *bImpl `inject:"b"`
+	Bf a      `inject:""`
 }
 
 func TestApp(t *testing.T) {
@@ -56,6 +57,12 @@ func TestApp(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = app.RegisterBeanByName("b", &bImpl{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBean(func() a {
+		return &bImpl{V: "hello world"}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
