@@ -11,11 +11,32 @@ import (
 )
 
 type ValueProcessor struct {
-	conf fig.Properties
+	conf      fig.Properties
+	tagPxName string
+	tagName   string
 }
 
-func NewValueProcessor() *ValueProcessor {
-	return &ValueProcessor{}
+type Opt func(processor *ValueProcessor)
+
+func OptSetValueTag(tagPxName, tagName string) Opt {
+	return func(processor *ValueProcessor) {
+		if tagName != "" {
+			if tagPxName == "" {
+				tagPxName = fig.TagPrefixName
+			}
+			processor.tagName = tagName
+			processor.tagPxName = tagPxName
+		}
+	}
+}
+
+func NewValueProcessor(opts ...Opt) *ValueProcessor {
+	ret := &ValueProcessor{
+	}
+	for _, opt := range opts {
+		opt(ret)
+	}
+	return ret
 }
 
 func (p *ValueProcessor) Init(conf fig.Properties, container container.Container) error {
@@ -24,7 +45,11 @@ func (p *ValueProcessor) Init(conf fig.Properties, container container.Container
 }
 
 func (p *ValueProcessor) Classify(o interface{}) (bool, error) {
-	return true, fig.Fill(p.conf, o)
+	if p.tagName == "" {
+		return true, fig.Fill(p.conf, o)
+	} else {
+		return true, fig.FillExWithTagName(p.conf, o, false, p.tagPxName, p.tagName)
+	}
 }
 
 func (p *ValueProcessor) Process() error {

@@ -46,7 +46,7 @@ type injectBean struct {
 
 func TestApp(t *testing.T) {
 	app := neve.NewFileConfigApplication("assets/application-test.yaml")
-	err := app.RegisterBean(&processor.ValueProcessor{})
+	err := app.RegisterBean(processor.NewValueProcessor())
 	if err != nil {
 		t.Fatal(err)
 	}
