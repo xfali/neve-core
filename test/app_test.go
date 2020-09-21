@@ -13,7 +13,6 @@ import (
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
-	"os"
 	"testing"
 )
 
@@ -35,6 +34,11 @@ type bImpl struct {
 
 func (b *bImpl) Get() string {
 	return b.V
+}
+
+func (b *bImpl) AfterSet() error {
+	xlog.Infoln("bImpl set")
+	return nil
 }
 
 type injectBean struct {
@@ -111,11 +115,12 @@ func (p *testProcessor) Process() error {
 		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
 	}
 	xlog.Infoln("all pass, exit")
-	os.Exit(0)
+	//os.Exit(0)
 	return nil
 }
 
-func (p *testProcessor) Close() error {
+func (p *testProcessor) Destroy() error {
+	xlog.Infoln("testProcessor destroyed")
 	return nil
 }
 

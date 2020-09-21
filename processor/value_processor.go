@@ -56,6 +56,6 @@ func (p *ValueProcessor) Process() error {
 	return nil
 }
 
-func (p *ValueProcessor) Close() error {
+func (p *ValueProcessor) Destroy() error {
 	return nil
 }

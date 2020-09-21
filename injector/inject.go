@@ -7,6 +7,7 @@ package injector
 
 import (
 	"errors"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
@@ -106,8 +107,8 @@ func (injector *defaultInjector) injectInterface(c container.Container, name str
 		return nil
 	} else {
 		//自动注入
-		var matchValues []container.BeanDefinition
-		c.Scan(func(key string, value container.BeanDefinition) bool {
+		var matchValues []bean.BeanDefinition
+		c.Scan(func(key string, value bean.BeanDefinition) bool {
 			//指定名称注册的对象直接跳过，因为在container.Get未满足，所以认定不是用户想要注入的对象
 			if key != value.Name() {
 				return true

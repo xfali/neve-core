@@ -6,7 +6,6 @@
 package neve
 
 import (
-	"github.com/xfali/neve-utils/log"
 	"github.com/xfali/xlog"
 	"os"
 	"os/signal"
@@ -14,26 +13,27 @@ import (
 	"time"
 )
 
-func HandlerSignal(closers ...func() error) (err error) {
+func HandlerSignal(logger xlog.Logger, closers ...func() error) (err error) {
 	var (
 		ch = make(chan os.Signal, 1)
 	)
 	signal.Notify(ch, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	logger := log.GetLogger()
 	for {
 		si := <-ch
 		switch si {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-			time.Sleep(time.Second * 2)
+			time.Sleep(100 * time.Millisecond)
 			xlog.Infof("get a signal %s, stop the server", si.String())
-			for i := range closers {
-				cErr := closers[i]()
-				if cErr != nil {
-					logger.Errorln(cErr)
-					err = cErr
+			go func() {
+				for i := range closers {
+					cErr := closers[i]()
+					if cErr != nil {
+						logger.Errorln(cErr)
+						err = cErr
+					}
 				}
-			}
-			time.Sleep(time.Second)
+			}()
+			time.Sleep(2 * time.Second)
 			xlog.Infof("------ Process exited ------")
 			return
 		case syscall.SIGHUP:

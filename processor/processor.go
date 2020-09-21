@@ -7,8 +7,8 @@ package processor
 
 import (
 	"github.com/xfali/fig"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/container"
-	"io"
 )
 
 type Processor interface {
@@ -20,10 +20,10 @@ type Processor interface {
 	// return: bool 是否能够处理对象， error 处理是否有错误
 	Classify(o interface{}) (bool, error)
 
-	// 对已分类对象做统一处理
+	// 对已分类对象做统一处理，注意如果存在耗时操作，请使用其他协程处理。
 	// 成功返回nil，失败返回error
 	Process() error
 
-	// 关闭，资源回收相关操作
-	io.Closer
+	// 资源回收相关操作
+	bean.Disposable
 }

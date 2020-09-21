@@ -1,6 +1,6 @@
-neven:
+neve:
   inject:
-    disable: true
+    disable: false
     workers: 1
 
 userdata:

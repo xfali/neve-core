@@ -8,7 +8,7 @@ package neve
 import (
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/ctx"
-	"github.com/xfali/neve-utils/log"
+	"github.com/xfali/xlog"
 )
 
 type Application interface {
@@ -27,20 +27,21 @@ type Application interface {
 }
 
 type FileConfigApplication struct {
-	ctx ctx.ApplicationContext
+	ctx    ctx.ApplicationContext
+	logger xlog.Logger
 }
 
 type Opt func(*FileConfigApplication)
 
 func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplication {
-	logger := log.GetLogger()
 	prop, err := fig.LoadYamlFile(configPath)
 	if err != nil {
-		logger.Fatalln("load config file failed: ", err)
+		xlog.Errorln("load config file failed: ", err)
 		return nil
 	}
 	ret := &FileConfigApplication{
-		ctx: ctx.NewDefaultApplicationContext(prop),
+		ctx:    ctx.NewDefaultApplicationContext(prop),
+		logger: xlog.GetLogger(),
 	}
 
 	for _, opt := range opts {
@@ -60,11 +61,17 @@ func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{})
 
 func (app *FileConfigApplication) Run() error {
 	app.ctx.NotifyListeners(ctx.ApplicationEventInitialized)
-	return HandlerSignal(app.ctx.Close)
+	return HandlerSignal(app.logger, app.ctx.Close)
 }
 
 func OptSetApplicationContext(ctx ctx.ApplicationContext) Opt {
 	return func(application *FileConfigApplication) {
 		application.ctx = ctx
+	}
+}
+
+func OptSetLogger(logger xlog.Logger) Opt {
+	return func(application *FileConfigApplication) {
+		application.logger = logger
 	}
 }

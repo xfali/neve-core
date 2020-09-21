@@ -7,6 +7,7 @@ package container
 
 import (
 	"errors"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-utils/reflection"
 	"reflect"
 	"sync"
@@ -16,10 +17,10 @@ type Container interface {
 	Register(o interface{}) error
 	RegisterByName(name string, o interface{}) error
 
-	Get(name string) (BeanDefinition, bool)
+	Get(name string) (bean.BeanDefinition, bool)
 	GetByType(o interface{}) bool
 
-	Scan(func(key string, value BeanDefinition) bool)
+	Scan(func(key string, value bean.BeanDefinition) bool)
 }
 
 type defaultContainer struct {
@@ -35,7 +36,7 @@ func (c *defaultContainer) Register(o interface{}) error {
 }
 
 func (c *defaultContainer) RegisterByName(name string, o interface{}) error {
-	beanDefinition, err := createBeanDefinition(o)
+	beanDefinition, err := bean.CreateBeanDefinition(o)
 	if err != nil {
 		return err
 	}
@@ -60,10 +61,10 @@ func (c *defaultContainer) RegisterByName(name string, o interface{}) error {
 	return nil
 }
 
-func (c *defaultContainer) Get(name string) (BeanDefinition, bool) {
+func (c *defaultContainer) Get(name string) (bean.BeanDefinition, bool) {
 	o, load := c.objectPool.Load(name)
 	if load {
-		return o.(BeanDefinition), load
+		return o.(bean.BeanDefinition), load
 	}
 	return nil, false
 }
@@ -77,8 +78,8 @@ func (c *defaultContainer) GetByType(o interface{}) bool {
 	return false
 }
 
-func (c *defaultContainer) Scan(f func(key string, value BeanDefinition) bool) {
+func (c *defaultContainer) Scan(f func(key string, value bean.BeanDefinition) bool) {
 	c.objectPool.Range(func(key, value interface{}) bool {
-		return f(key.(string), value.(BeanDefinition))
+		return f(key.(string), value.(bean.BeanDefinition))
 	})
 }

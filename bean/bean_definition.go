@@ -3,7 +3,7 @@
 // @version V1.0
 // Description:
 
-package container
+package bean
 
 import (
 	"errors"
@@ -49,7 +49,7 @@ func RegisterBeanDefinitionCreator(kind reflect.Kind, creator BeanDefinitionCrea
 	}
 }
 
-func createBeanDefinition(o interface{}) (BeanDefinition, error) {
+func CreateBeanDefinition(o interface{}) (BeanDefinition, error) {
 	t := reflect.TypeOf(o)
 
 	creator, ok := beanDefinitionCreators[t.Kind()]

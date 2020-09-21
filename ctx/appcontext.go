@@ -8,6 +8,7 @@ package ctx
 import (
 	"errors"
 	"github.com/xfali/fig"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
@@ -94,16 +95,17 @@ func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultAp
 }
 
 func (ctx *defaultApplicationContext) Close() (err error) {
-	func() {
-		ctx.processorsLock.Lock()
-		defer ctx.processorsLock.Unlock()
-		for _, processor := range ctx.processors {
-			err = processor.Close()
-			if err != nil {
-				ctx.logger.Errorln(err)
+	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
+		if value.IsObject() {
+			if v, ok := value.Interface().(bean.Disposable); ok {
+				err = v.Destroy()
+				if err != nil {
+					ctx.logger.Errorln(err)
+				}
 			}
 		}
-	}()
+		return true
+	})
 
 	return
 }
@@ -218,8 +220,14 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 }
 
 func (ctx *defaultApplicationContext) processBean() error {
-	ctx.container.Scan(func(key string, value container.BeanDefinition) bool {
+	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
 		if value.IsObject() {
+			if v, ok := value.Interface().(bean.Initializing); ok {
+				err := v.AfterSet()
+				if err != nil {
+					ctx.logger.Errorln(err)
+				}
+			}
 			for _, processor := range ctx.processors {
 				_, err := processor.Classify(value.Interface())
 				if err != nil {
@@ -241,7 +249,7 @@ func (ctx *defaultApplicationContext) processBean() error {
 }
 
 func (ctx *defaultApplicationContext) injectAll() {
-	ctx.container.Scan(func(key string, value container.BeanDefinition) bool {
+	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
 		if value.IsObject() {
 			err := ctx.injector.Inject(ctx.container, value.Interface())
 			if err != nil {
