@@ -6,10 +6,12 @@
 package test
 
 import (
+	"errors"
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core"
 	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-core/processor"
+	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
 	"os"
 	"testing"
@@ -115,4 +117,13 @@ func (p *testProcessor) Process() error {
 
 func (p *testProcessor) Close() error {
 	return nil
+}
+
+func TestPanic(t *testing.T) {
+	err := func() (err error) {
+		defer neverror.HandleError(&err)
+		neverror.PanicError(errors.New("test"))
+		return
+	}()
+	t.Log(err)
 }

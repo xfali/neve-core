@@ -9,11 +9,6 @@ import (
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/ctx"
 	"github.com/xfali/neve-utils/log"
-	"github.com/xfali/xlog"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 type Application interface {
@@ -65,40 +60,11 @@ func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{})
 
 func (app *FileConfigApplication) Run() error {
 	app.ctx.NotifyListeners(ctx.ApplicationEventInitialized)
-	HandlerSignal(app.ctx.Close)
-	return nil
+	return HandlerSignal(app.ctx.Close)
 }
 
 func OptSetApplicationContext(ctx ctx.ApplicationContext) Opt {
 	return func(application *FileConfigApplication) {
 		application.ctx = ctx
-	}
-}
-
-func HandlerSignal(closers ...func() error) {
-	var (
-		ch = make(chan os.Signal, 1)
-	)
-	signal.Notify(ch, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	logger := log.GetLogger()
-	for {
-		si := <-ch
-		switch si {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-			time.Sleep(time.Second * 2)
-			xlog.Infof("get a signal %s, stop the server", si.String())
-			for i := range closers {
-				err := closers[i]()
-				if err != nil {
-					logger.Errorln(err)
-				}
-			}
-			time.Sleep(time.Second)
-			xlog.Infof("------ Process exited ------")
-			return
-		case syscall.SIGHUP:
-		default:
-			return
-		}
 	}
 }

@@ -1,10 +1,16 @@
+github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
+github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-logr/logr v0.2.0/go.mod h1:z6/tIYblkpsD+a4lm/fGIIU9mZ+XfAiaFtq7xTgseGU=
 github.com/xfali/fig v0.0.3 h1:PhODlBK0qMBXPEKcUHlzcfCLCE75dBzjs5lJnVx5KjA=
 github.com/xfali/fig v0.0.3/go.mod h1:w3BRo3x7lc3m0KzVdsQ/fVV/aoyf9a55Y0fgcRiBcbg=
+github.com/xfali/fig v0.1.1 h1:X3CTxPJkVwl8Hf/GycOI2WuqhLOT2/fF2u7I+Vk+990=
+github.com/xfali/fig v0.1.1/go.mod h1:My4IYRBWjrMtfwwIDQNwQiOqhjIDB6XrQ4hvF9lzby4=
 github.com/xfali/goutils v0.0.9 h1:Vnhf1K17NdPxfUO93FTameBlLuoDyof+QtdsVBzwOTk=
 github.com/xfali/goutils v0.0.9/go.mod h1:Z1gZz5xVqHiSiwL+8GpzriqfQeGfV5ipSXsZFhnItSA=
 github.com/xfali/neve-utils v0.0.0-20200916150208-6611507c6488 h1:mkl17pyta3/Q5STMeUmk0vGzToVpyKe5Dyk1DpdaCik=
 github.com/xfali/neve-utils v0.0.0-20200916150208-6611507c6488/go.mod h1:hgP9KgI3lgNuffuWt0BkHYf7CpxUF4GYTRy4yM/vsV8=
+github.com/xfali/neve-utils v0.0.0-20200921141719-23ef4589da4c h1:dETojJ2AJzsmEQHymU0hmPbrxQ+vAmKj+0MEStDHjiA=
+github.com/xfali/neve-utils v0.0.0-20200921141719-23ef4589da4c/go.mod h1:hgP9KgI3lgNuffuWt0BkHYf7CpxUF4GYTRy4yM/vsV8=
 github.com/xfali/xlog v0.0.9 h1:U0n9cle55l+pCpd3UdFrP8LCve5yWKtxBeJWgp64sVY=
 github.com/xfali/xlog v0.0.9/go.mod h1:W9nEm+z16pEh1HAOW9m/GuVk1h9FE29jv1byivczWcw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
