@@ -9,10 +9,11 @@ import (
 	"errors"
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core"
-	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
+	"os"
 	"testing"
 )
 
@@ -86,7 +87,7 @@ type testProcessor struct {
 	injectBean *injectBean
 }
 
-func (p *testProcessor) Init(conf fig.Properties, container container.Container) error {
+func (p *testProcessor) Init(conf fig.Properties, container bean.Container) error {
 	return nil
 }
 
@@ -115,11 +116,11 @@ func (p *testProcessor) Process() error {
 		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
 	}
 	xlog.Infoln("all pass, exit")
-	//os.Exit(0)
+	os.Exit(0)
 	return nil
 }
 
-func (p *testProcessor) Destroy() error {
+func (p *testProcessor) BeanDestroy() error {
 	xlog.Infoln("testProcessor destroyed")
 	return nil
 }

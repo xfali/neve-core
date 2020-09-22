@@ -6,7 +6,7 @@
 package inject
 
 import (
-	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"io"
 	"testing"
@@ -45,7 +45,7 @@ type dest struct {
 
 func TestInjectInterface(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		c.RegisterByName("b", &bImpl{})
 		i := injector.New()
@@ -65,7 +65,7 @@ func TestInjectInterface(t *testing.T) {
 	})
 
 	t.Run("inject twice", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		c.RegisterByName("b", &bImpl{})
 		i := injector.New()
@@ -97,7 +97,7 @@ func TestInjectInterface(t *testing.T) {
 	})
 
 	t.Run("inject twice with modify", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		b := &bImpl{}
 		c.RegisterByName("b", b)
@@ -143,7 +143,7 @@ type dest2 struct {
 
 func TestInjectStruct(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		c.RegisterByName("b", &bImpl{})
 		i := injector.New()
@@ -163,7 +163,7 @@ func TestInjectStruct(t *testing.T) {
 	})
 
 	t.Run("inject twice", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		c.RegisterByName("b", &bImpl{})
 		i := injector.New()
@@ -195,7 +195,7 @@ func TestInjectStruct(t *testing.T) {
 	})
 
 	t.Run("inject twice with modify", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 
 		c.Register(&aImpl{})
 		b := &bImpl{}
@@ -249,7 +249,7 @@ func TestInjectFunc(t *testing.T) {
 		return &bImpl{}
 	}
 	t.Run("inject once", func(t *testing.T) {
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(f1)
 		c.RegisterByName("b", f2)
 		i := injector.New()
@@ -275,7 +275,7 @@ func TestInjectFunc(t *testing.T) {
 		f2 := func() *bImpl {
 			return &bImpl{}
 		}
-		c := container.New()
+		c := bean.NewContainer()
 		c.Register(f1)
 		c.RegisterByName("b", f2)
 		i := injector.New()
@@ -316,7 +316,7 @@ func TestInjectFunc(t *testing.T) {
 			return &bImpl{i: *x1}
 		}
 
-		c := container.New()
+		c := bean.NewContainer()
 
 		c.Register(f1)
 		c.RegisterByName("b", f2)
@@ -361,7 +361,7 @@ func TestInjectFunc(t *testing.T) {
 			return &bImpl{i: *x1}
 		}
 
-		c := container.New()
+		c := bean.NewContainer()
 
 		c.Register(f1)
 		c.RegisterByName("b", f2)
@@ -423,7 +423,7 @@ func TestInjectComplex(t *testing.T) {
 	}
 
 	dest := &injectBean{}
-	c := container.New()
+	c := bean.NewContainer()
 	i := injector.New()
 
 	// 此处注册名称为aImpl类型名

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/bean"
-	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/xlog"
@@ -66,7 +65,7 @@ type Opt func(*defaultApplicationContext)
 type defaultApplicationContext struct {
 	config    fig.Properties
 	logger    xlog.Logger
-	container container.Container
+	container bean.Container
 	injector  injector.Injector
 
 	listeners    []ApplicationContextListener
@@ -82,7 +81,7 @@ func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultAp
 	ret := &defaultApplicationContext{
 		config:    config,
 		logger:    xlog.GetLogger(),
-		container: container.New(),
+		container: bean.NewContainer(),
 
 		curState: statusNone,
 	}
@@ -98,7 +97,7 @@ func (ctx *defaultApplicationContext) Close() (err error) {
 	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
 		if value.IsObject() {
 			if v, ok := value.Interface().(bean.Disposable); ok {
-				err = v.Destroy()
+				err = v.BeanDestroy()
 				if err != nil {
 					ctx.logger.Errorln(err)
 				}
@@ -223,7 +222,7 @@ func (ctx *defaultApplicationContext) processBean() error {
 	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
 		if value.IsObject() {
 			if v, ok := value.Interface().(bean.Initializing); ok {
-				err := v.AfterSet()
+				err := v.BeanAfterSet()
 				if err != nil {
 					ctx.logger.Errorln(err)
 				}
@@ -260,7 +259,7 @@ func (ctx *defaultApplicationContext) injectAll() {
 	})
 }
 
-func OptSetContainer(container container.Container) Opt {
+func OptSetContainer(container bean.Container) Opt {
 	return func(context *defaultApplicationContext) {
 		context.container = container
 	}

@@ -24,7 +24,7 @@ type BeanDefinition interface {
 	// 获得注册的bean对象
 	Interface() interface{}
 
-	// 是否注入的对象
+	// 是否是可注入对象
 	IsObject() bool
 }
 

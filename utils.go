@@ -33,7 +33,7 @@ func HandlerSignal(logger xlog.Logger, closers ...func() error) (err error) {
 					}
 				}
 			}()
-			time.Sleep(2 * time.Second)
+			time.Sleep(3 * time.Second)
 			xlog.Infof("------ Process exited ------")
 			return
 		case syscall.SIGHUP:

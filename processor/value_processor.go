@@ -7,7 +7,7 @@ package processor
 
 import (
 	"github.com/xfali/fig"
-	"github.com/xfali/neve-core/container"
+	"github.com/xfali/neve-core/bean"
 )
 
 type ValueProcessor struct {
@@ -39,7 +39,7 @@ func NewValueProcessor(opts ...Opt) *ValueProcessor {
 	return ret
 }
 
-func (p *ValueProcessor) Init(conf fig.Properties, container container.Container) error {
+func (p *ValueProcessor) Init(conf fig.Properties, container bean.Container) error {
 	p.conf = conf
 	return nil
 }
@@ -56,6 +56,6 @@ func (p *ValueProcessor) Process() error {
 	return nil
 }
 
-func (p *ValueProcessor) Destroy() error {
+func (p *ValueProcessor) BeanDestroy() error {
 	return nil
 }

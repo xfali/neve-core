@@ -8,7 +8,6 @@ package injector
 import (
 	"errors"
 	"github.com/xfali/neve-core/bean"
-	"github.com/xfali/neve-core/container"
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
@@ -19,10 +18,10 @@ const (
 )
 
 type Injector interface {
-	Inject(container container.Container, o interface{}) error
+	Inject(container bean.Container, o interface{}) error
 }
 
-type Actuator func(c container.Container, name string, v reflect.Value) error
+type Actuator func(c bean.Container, name string, v reflect.Value) error
 
 type defaultInjector struct {
 	logger    xlog.Logger
@@ -46,7 +45,7 @@ func New(opts ...Opt) *defaultInjector {
 	return ret
 }
 
-func (injector *defaultInjector) Inject(c container.Container, o interface{}) error {
+func (injector *defaultInjector) Inject(c bean.Container, o interface{}) error {
 	v := reflect.ValueOf(o)
 	if v.Kind() == reflect.Interface {
 		return injector.injectInterface(c, "", v)
@@ -63,7 +62,7 @@ func (injector *defaultInjector) Inject(c container.Container, o interface{}) er
 	return errors.New("Type Not support. ")
 }
 
-func (injector *defaultInjector) injectStructFields(c container.Container, v reflect.Value) error {
+func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.Value) error {
 	t := v.Type()
 	if t.Kind() != reflect.Struct {
 		return errors.New("result must be struct ptr")
@@ -96,7 +95,7 @@ func (injector *defaultInjector) injectStructFields(c container.Container, v ref
 	return nil
 }
 
-func (injector *defaultInjector) injectInterface(c container.Container, name string, v reflect.Value) error {
+func (injector *defaultInjector) injectInterface(c bean.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
 		name = reflection.GetTypeName(vt)
@@ -136,7 +135,7 @@ func (injector *defaultInjector) injectInterface(c container.Container, name str
 	return errors.New("Inject nothing, cannot find any Implementation: " + reflection.GetTypeName(vt))
 }
 
-func (injector *defaultInjector) injectStruct(c container.Container, name string, v reflect.Value) error {
+func (injector *defaultInjector) injectStruct(c bean.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
 		name = reflection.GetTypeName(vt)
