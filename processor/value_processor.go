@@ -31,8 +31,7 @@ func OptSetValueTag(tagPxName, tagName string) Opt {
 }
 
 func NewValueProcessor(opts ...Opt) *ValueProcessor {
-	ret := &ValueProcessor{
-	}
+	ret := &ValueProcessor{}
 	for _, opt := range opts {
 		opt(ret)
 	}

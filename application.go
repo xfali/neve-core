@@ -7,7 +7,7 @@ package neve
 
 import (
 	"github.com/xfali/fig"
-	"github.com/xfali/neve-core/ctx"
+	"github.com/xfali/neve-core/appcontext"
 	"github.com/xfali/xlog"
 )
 
@@ -27,7 +27,7 @@ type Application interface {
 }
 
 type FileConfigApplication struct {
-	ctx    ctx.ApplicationContext
+	ctx    appcontext.ApplicationContext
 	logger xlog.Logger
 }
 
@@ -40,7 +40,7 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 		return nil
 	}
 	ret := &FileConfigApplication{
-		ctx:    ctx.NewDefaultApplicationContext(prop),
+		ctx:    appcontext.NewDefaultApplicationContext(prop),
 		logger: xlog.GetLogger(),
 	}
 
@@ -60,11 +60,11 @@ func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{})
 }
 
 func (app *FileConfigApplication) Run() error {
-	app.ctx.NotifyListeners(ctx.ApplicationEventInitialized)
+	app.ctx.NotifyListeners(appcontext.ApplicationEventInitialized)
 	return HandlerSignal(app.logger, app.ctx.Close)
 }
 
-func OptSetApplicationContext(ctx ctx.ApplicationContext) Opt {
+func OptSetApplicationContext(ctx appcontext.ApplicationContext) Opt {
 	return func(application *FileConfigApplication) {
 		application.ctx = ctx
 	}

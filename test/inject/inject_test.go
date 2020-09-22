@@ -429,14 +429,14 @@ func TestInjectComplex(t *testing.T) {
 	// 此处注册名称为aImpl类型名
 	checkErr(c.Register(&aImpl{}), t)
 	// 此处注册名称为b类型名
-	checkErr(c.RegisterByName("b", &bImpl{i : 2}), t)
+	checkErr(c.RegisterByName("b", &bImpl{i: 2}), t)
 	//注意：此处注册的名称为a的类型名
 	checkErr(c.Register(func() a {
-		return &bImpl{i : 10}
+		return &bImpl{i: 10}
 	}), t)
 	// 此处注册名称为c
 	checkErr(c.RegisterByName("c", func() *bImpl {
-		return &bImpl{i : 11}
+		return &bImpl{i: 11}
 	}), t)
 
 	var errA a = &bImpl{i: 3}
@@ -444,7 +444,6 @@ func TestInjectComplex(t *testing.T) {
 	checkErr(c.Register(errA), t)
 
 	checkErr(i.Inject(c, dest), t)
-
 
 	if dest.A.Get() != 10 {
 		t.Fatal("expect 10 but get: ", dest.A.Get())
