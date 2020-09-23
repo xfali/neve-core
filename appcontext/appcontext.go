@@ -221,14 +221,16 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 func (ctx *defaultApplicationContext) processBean() error {
 	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
 		if value.IsObject() {
-			if v, ok := value.Interface().(bean.Initializing); ok {
-				err := v.BeanAfterSet()
+			// 必须先分类，由于ValueProcessor会在Classify将配置的属性值注入
+			for _, processor := range ctx.processors {
+				_, err := processor.Classify(value.Interface())
 				if err != nil {
 					ctx.logger.Errorln(err)
 				}
 			}
-			for _, processor := range ctx.processors {
-				_, err := processor.Classify(value.Interface())
+
+			if v, ok := value.Interface().(bean.Initializing); ok {
+				err := v.BeanAfterSet()
 				if err != nil {
 					ctx.logger.Errorln(err)
 				}

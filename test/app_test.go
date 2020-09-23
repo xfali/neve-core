@@ -37,8 +37,11 @@ func (b *bImpl) Get() string {
 	return b.V
 }
 
-func (b *bImpl) AfterSet() error {
-	xlog.Infoln("bImpl set")
+func (b *bImpl) BeanAfterSet() error {
+	xlog.Infoln("bImpl set, V: ", b.V)
+	if b.V != "this is a test" {
+		xlog.Fatalln("b.V not inject")
+	}
 	return nil
 }
 
