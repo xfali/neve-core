@@ -16,10 +16,10 @@ type Container interface {
 	Register(o interface{}) error
 	RegisterByName(name string, o interface{}) error
 
-	Get(name string) (BeanDefinition, bool)
+	Get(name string) (Definition, bool)
 	GetByType(o interface{}) bool
 
-	Scan(func(key string, value BeanDefinition) bool)
+	Scan(func(key string, value Definition) bool)
 }
 
 type defaultContainer struct {
@@ -60,10 +60,10 @@ func (c *defaultContainer) RegisterByName(name string, o interface{}) error {
 	return nil
 }
 
-func (c *defaultContainer) Get(name string) (BeanDefinition, bool) {
+func (c *defaultContainer) Get(name string) (Definition, bool) {
 	o, load := c.objectPool.Load(name)
 	if load {
-		return o.(BeanDefinition), load
+		return o.(Definition), load
 	}
 	return nil, false
 }
@@ -77,8 +77,8 @@ func (c *defaultContainer) GetByType(o interface{}) bool {
 	return false
 }
 
-func (c *defaultContainer) Scan(f func(key string, value BeanDefinition) bool) {
+func (c *defaultContainer) Scan(f func(key string, value Definition) bool) {
 	c.objectPool.Range(func(key, value interface{}) bool {
-		return f(key.(string), value.(BeanDefinition))
+		return f(key.(string), value.(Definition))
 	})
 }

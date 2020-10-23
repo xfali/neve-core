@@ -94,14 +94,10 @@ func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultAp
 }
 
 func (ctx *defaultApplicationContext) Close() (err error) {
-	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
-		if value.IsObject() {
-			if v, ok := value.Interface().(bean.Disposable); ok {
-				err = v.BeanDestroy()
-				if err != nil {
-					ctx.logger.Errorln(err)
-				}
-			}
+	ctx.container.Scan(func(key string, value bean.Definition) bool {
+		err = value.Destroy()
+		if err != nil {
+			ctx.logger.Errorln(err)
 		}
 		return true
 	})
@@ -219,7 +215,7 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 }
 
 func (ctx *defaultApplicationContext) processBean() error {
-	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
+	ctx.container.Scan(func(key string, value bean.Definition) bool {
 		if value.IsObject() {
 			// 必须先分类，由于ValueProcessor会在Classify将配置的属性值注入
 			for _, processor := range ctx.processors {
@@ -250,7 +246,7 @@ func (ctx *defaultApplicationContext) processBean() error {
 }
 
 func (ctx *defaultApplicationContext) injectAll() {
-	ctx.container.Scan(func(key string, value bean.BeanDefinition) bool {
+	ctx.container.Scan(func(key string, value bean.Definition) bool {
 		if value.IsObject() {
 			err := ctx.injector.Inject(ctx.container, value.Interface())
 			if err != nil {

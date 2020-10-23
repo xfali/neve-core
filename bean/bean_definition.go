@@ -9,9 +9,10 @@ import (
 	"errors"
 	"github.com/xfali/neve-utils/reflection"
 	"reflect"
+	"sync/atomic"
 )
 
-type BeanDefinition interface {
+type Definition interface {
 	// 类型
 	Type() reflect.Type
 
@@ -26,30 +27,34 @@ type BeanDefinition interface {
 
 	// 是否是可注入对象
 	IsObject() bool
+
+	// 销毁对象
+	Destroy() error
 }
 
 type objectDefinition struct {
-	name string
-	o    interface{}
-	t    reflect.Type
+	name    string
+	o       interface{}
+	t       reflect.Type
+	destroy int32
 }
 
-type BeanDefinitionCreator func(o interface{}) (BeanDefinition, error)
+type DefinitionCreator func(o interface{}) (Definition, error)
 
-var beanDefinitionCreators = map[reflect.Kind]BeanDefinitionCreator{
+var beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
 	reflect.Ptr:  newObjectDefinition,
 	reflect.Func: newFunctionDefinition,
 }
 
 // 注册BeanDefinition创建器，使其能处理更多类型。
 // 默认支持Pointer、Function
-func RegisterBeanDefinitionCreator(kind reflect.Kind, creator BeanDefinitionCreator) {
+func RegisterBeanDefinitionCreator(kind reflect.Kind, creator DefinitionCreator) {
 	if creator != nil {
 		beanDefinitionCreators[kind] = creator
 	}
 }
 
-func CreateBeanDefinition(o interface{}) (BeanDefinition, error) {
+func CreateBeanDefinition(o interface{}) (Definition, error) {
 	t := reflect.TypeOf(o)
 
 	creator, ok := beanDefinitionCreators[t.Kind()]
@@ -60,7 +65,7 @@ func CreateBeanDefinition(o interface{}) (BeanDefinition, error) {
 	return creator(o)
 }
 
-func newObjectDefinition(o interface{}) (BeanDefinition, error) {
+func newObjectDefinition(o interface{}) (Definition, error) {
 	t := reflect.TypeOf(o)
 	if t.Kind() == reflect.Ptr {
 		t2 := t.Elem()
@@ -69,9 +74,10 @@ func newObjectDefinition(o interface{}) (BeanDefinition, error) {
 		}
 	}
 	return &objectDefinition{
-		name: reflection.GetTypeName(t),
-		o:    o,
-		t:    t,
+		name:    reflection.GetTypeName(t),
+		o:       o,
+		t:       t,
+		destroy: 0,
 	}, nil
 }
 
@@ -93,6 +99,16 @@ func (d *objectDefinition) Interface() interface{} {
 
 func (d *objectDefinition) IsObject() bool {
 	return true
+}
+
+func (d *objectDefinition) Destroy() error {
+	// Just run once
+	if atomic.CompareAndSwapInt32(&d.destroy, 0, 1) {
+		if v, ok := d.o.(Disposable); ok {
+			return v.BeanDestroy()
+		}
+	}
+	return nil
 }
 
 var errType = reflect.TypeOf((*error)(nil)).Elem()
@@ -119,7 +135,7 @@ func verifyBeanFunction(ft reflect.Type) error {
 	return nil
 }
 
-func newFunctionDefinition(o interface{}) (BeanDefinition, error) {
+func newFunctionDefinition(o interface{}) (Definition, error) {
 	ft := reflect.TypeOf(o)
 	err := verifyBeanFunction(ft)
 	if err != nil {
@@ -153,4 +169,8 @@ func (d *functionDefinition) Interface() interface{} {
 
 func (d *functionDefinition) IsObject() bool {
 	return false
+}
+
+func (d *functionDefinition) Destroy() error {
+	return nil
 }

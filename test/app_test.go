@@ -45,6 +45,11 @@ func (b *bImpl) BeanAfterSet() error {
 	return nil
 }
 
+func (b *bImpl) BeanDestroy() error {
+	xlog.Infoln("bImpl destroyed")
+	return nil
+}
+
 type injectBean struct {
 	A  a      `inject:""`
 	B  a      `inject:"b"`
