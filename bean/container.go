@@ -16,8 +16,11 @@ type Container interface {
 	Register(o interface{}) error
 	RegisterByName(name string, o interface{}) error
 
-	Get(name string) (Definition, bool)
+	Get(name string) (interface{}, bool)
 	GetByType(o interface{}) bool
+
+	GetDefinition(name string) (Definition, bool)
+	PutDefinition(name string, definition Definition) error
 
 	Scan(func(key string, value Definition) bool)
 }
@@ -60,7 +63,18 @@ func (c *defaultContainer) RegisterByName(name string, o interface{}) error {
 	return nil
 }
 
-func (c *defaultContainer) Get(name string) (Definition, bool) {
+func (c *defaultContainer) PutDefinition(name string, definition Definition) error {
+	if definition == nil {
+		return errors.New("Definition is nil. ")
+	}
+	_, loaded := c.objectPool.LoadOrStore(name, definition)
+	if loaded {
+		return errors.New(name + " bean is exists. ")
+	}
+	return nil
+}
+
+func (c *defaultContainer) GetDefinition(name string) (Definition, bool) {
 	o, load := c.objectPool.Load(name)
 	if load {
 		return o.(Definition), load
@@ -68,9 +82,17 @@ func (c *defaultContainer) Get(name string) (Definition, bool) {
 	return nil, false
 }
 
+func (c *defaultContainer) Get(name string) (interface{}, bool) {
+	o, load := c.GetDefinition(name)
+	if load {
+		return o.Value().Interface(), load
+	}
+	return nil, false
+}
+
 func (c *defaultContainer) GetByType(o interface{}) bool {
 	v := reflect.ValueOf(o)
-	d, ok := c.Get(reflection.GetTypeName(v.Type()))
+	d, ok := c.GetDefinition(reflection.GetTypeName(v.Type()))
 	if ok {
 		v.Set(d.Value())
 	}

@@ -40,12 +40,18 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 		return nil
 	}
 	ret := &FileConfigApplication{
-		ctx:    appcontext.NewDefaultApplicationContext(prop),
+		ctx:    appcontext.NewDefaultApplicationContext(),
 		logger: xlog.GetLogger(),
 	}
 
 	for _, opt := range opts {
 		opt(ret)
+	}
+
+	err = ret.ctx.Init(prop)
+	if err != nil {
+		ret.logger.Fatalln(err)
+		return nil
 	}
 
 	return ret

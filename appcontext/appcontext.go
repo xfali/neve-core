@@ -30,6 +30,9 @@ const (
 )
 
 type ApplicationContext interface {
+	// 初始化context
+	Init(config fig.Properties) error
+
 	// 注册对象
 	RegisterBean(o interface{}) error
 
@@ -77,9 +80,8 @@ type defaultApplicationContext struct {
 	curState int32
 }
 
-func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultApplicationContext {
+func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 	ret := &defaultApplicationContext{
-		config:    config,
 		logger:    xlog.GetLogger(),
 		container: bean.NewContainer(),
 
@@ -91,6 +93,11 @@ func NewDefaultApplicationContext(config fig.Properties, opts ...Opt) *defaultAp
 		opt(ret)
 	}
 	return ret
+}
+
+func (ctx *defaultApplicationContext) Init(config fig.Properties) (err error) {
+	ctx.config = config
+	return nil
 }
 
 func (ctx *defaultApplicationContext) Close() (err error) {

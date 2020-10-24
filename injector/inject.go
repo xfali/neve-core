@@ -100,7 +100,7 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 	if name == "" {
 		name = reflection.GetTypeName(vt)
 	}
-	o, ok := c.Get(name)
+	o, ok := c.GetDefinition(name)
 	if ok {
 		v.Set(o.Value())
 		return nil
@@ -125,7 +125,7 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 		if len(matchValues) == 1 {
 			v.Set(matchValues[0].Value())
 			// cache to container
-			err := c.RegisterByName(reflection.GetTypeName(vt), matchValues[0].Interface())
+			err := c.PutDefinition(reflection.GetTypeName(vt), matchValues[0])
 			if err != nil {
 				injector.logger.Warnln(err)
 			}
@@ -140,7 +140,7 @@ func (injector *defaultInjector) injectStruct(c bean.Container, name string, v r
 	if name == "" {
 		name = reflection.GetTypeName(vt)
 	}
-	o, ok := c.Get(name)
+	o, ok := c.GetDefinition(name)
 	if ok {
 		ov := o.Value()
 		if vt.Kind() == reflect.Ptr {
