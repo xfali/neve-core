@@ -232,11 +232,9 @@ func (ctx *defaultApplicationContext) processBean() error {
 				}
 			}
 
-			if v, ok := value.Interface().(bean.Initializing); ok {
-				err := v.BeanAfterSet()
-				if err != nil {
-					ctx.logger.Errorln(err)
-				}
+			err := value.AfterSet()
+			if err != nil {
+				ctx.logger.Errorln(err)
 			}
 		}
 		return true

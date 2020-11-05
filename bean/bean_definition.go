@@ -28,15 +28,19 @@ type Definition interface {
 	// 是否是可注入对象
 	IsObject() bool
 
+	// 在属性配置完成后调用
+	AfterSet() error
+
 	// 销毁对象
 	Destroy() error
 }
 
 type objectDefinition struct {
-	name    string
-	o       interface{}
-	t       reflect.Type
-	destroy int32
+	name        string
+	o           interface{}
+	t           reflect.Type
+	flagSet     int32
+	flagDestroy int32
 }
 
 type DefinitionCreator func(o interface{}) (Definition, error)
@@ -74,10 +78,11 @@ func newObjectDefinition(o interface{}) (Definition, error) {
 		}
 	}
 	return &objectDefinition{
-		name:    reflection.GetTypeName(t),
-		o:       o,
-		t:       t,
-		destroy: 0,
+		name:        reflection.GetTypeName(t),
+		o:           o,
+		t:           t,
+		flagSet:     0,
+		flagDestroy: 0,
 	}, nil
 }
 
@@ -101,9 +106,19 @@ func (d *objectDefinition) IsObject() bool {
 	return true
 }
 
+func (d *objectDefinition) AfterSet() error {
+	// Just run once
+	if atomic.CompareAndSwapInt32(&d.flagSet, 0, 1) {
+		if v, ok := d.o.(Initializing); ok {
+			return v.BeanAfterSet()
+		}
+	}
+	return nil
+}
+
 func (d *objectDefinition) Destroy() error {
 	// Just run once
-	if atomic.CompareAndSwapInt32(&d.destroy, 0, 1) {
+	if atomic.CompareAndSwapInt32(&d.flagDestroy, 0, 1) {
 		if v, ok := d.o.(Disposable); ok {
 			return v.BeanDestroy()
 		}
@@ -169,6 +184,10 @@ func (d *functionDefinition) Interface() interface{} {
 
 func (d *functionDefinition) IsObject() bool {
 	return false
+}
+
+func (d *functionDefinition) AfterSet() error {
+	return nil
 }
 
 func (d *functionDefinition) Destroy() error {
