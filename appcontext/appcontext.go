@@ -77,7 +77,8 @@ type defaultApplicationContext struct {
 	processors     []processor.Processor
 	processorsLock sync.Mutex
 
-	curState int32
+	disableInject bool
+	curState     int32
 }
 
 func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
@@ -97,6 +98,7 @@ func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 
 func (ctx *defaultApplicationContext) Init(config fig.Properties) (err error) {
 	ctx.config = config
+	ctx.disableInject = ctx.config.Get("neve.inject.disable", "false") == "true"
 	return nil
 }
 
@@ -200,13 +202,12 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 	if ApplicationEventInitialized == e {
 		// 第一次初始化，注入所有对象
 		if atomic.CompareAndSwapInt32(&ctx.curState, statusNone, statusInitializing) {
-			if ctx.config.Get("neve.inject.disable", "false") != "true" {
+			if !ctx.disableInject{
 				ctx.injectAll()
 			}
-			err := ctx.processBean()
-			if err != nil {
-				ctx.logger.Fatalln(err)
-			}
+			ctx.classifyBean()
+			ctx.notifyBeanSet()
+			ctx.doProcess()
 			// 初始化完成
 			if !atomic.CompareAndSwapInt32(&ctx.curState, statusInitializing, statusInitialized) {
 				ctx.logger.Fatal("Cannot be here!")
@@ -221,7 +222,7 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 	}
 }
 
-func (ctx *defaultApplicationContext) processBean() error {
+func (ctx *defaultApplicationContext) classifyBean() {
 	ctx.container.Scan(func(key string, value bean.Definition) bool {
 		if value.IsObject() {
 			// 必须先分类，由于ValueProcessor会在Classify将配置的属性值注入
@@ -231,23 +232,29 @@ func (ctx *defaultApplicationContext) processBean() error {
 					ctx.logger.Errorln(err)
 				}
 			}
-
-			err := value.AfterSet()
-			if err != nil {
-				ctx.logger.Errorln(err)
-			}
 		}
 		return true
 	})
+}
 
+func (ctx *defaultApplicationContext) notifyBeanSet() {
+	ctx.container.Scan(func(key string, value bean.Definition) bool {
+		err := value.AfterSet()
+		if err != nil {
+			ctx.logger.Errorln(err)
+		}
+		return true
+	})
+}
+
+func (ctx *defaultApplicationContext) doProcess() {
 	for _, processor := range ctx.processors {
 		err := processor.Process()
 		// processor error must return
 		if err != nil {
-			return err
+			ctx.logger.Fatalln(err)
 		}
 	}
-	return nil
 }
 
 func (ctx *defaultApplicationContext) injectAll() {
