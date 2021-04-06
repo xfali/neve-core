@@ -11,8 +11,12 @@ github.com/xfali/neve-utils v0.0.0-20200916150208-6611507c6488 h1:mkl17pyta3/Q5S
 github.com/xfali/neve-utils v0.0.0-20200916150208-6611507c6488/go.mod h1:hgP9KgI3lgNuffuWt0BkHYf7CpxUF4GYTRy4yM/vsV8=
 github.com/xfali/neve-utils v0.0.0-20200921141719-23ef4589da4c h1:dETojJ2AJzsmEQHymU0hmPbrxQ+vAmKj+0MEStDHjiA=
 github.com/xfali/neve-utils v0.0.0-20200921141719-23ef4589da4c/go.mod h1:hgP9KgI3lgNuffuWt0BkHYf7CpxUF4GYTRy4yM/vsV8=
+github.com/xfali/neve-utils v0.0.1 h1:S+NfOFYeqILzCylAvd9OI00JqXW1meNPScb9JIDZBaQ=
+github.com/xfali/neve-utils v0.0.1/go.mod h1:qwnnleG/95zSAnGPi0zWk+eeeP0bUUckkqFKa3YWvMU=
 github.com/xfali/xlog v0.0.9 h1:U0n9cle55l+pCpd3UdFrP8LCve5yWKtxBeJWgp64sVY=
 github.com/xfali/xlog v0.0.9/go.mod h1:W9nEm+z16pEh1HAOW9m/GuVk1h9FE29jv1byivczWcw=
+github.com/xfali/xlog v0.1.1 h1:iB5ESlv2/Ig8biThcbJq2ivKewdeQfPFES7LB27ceRE=
+github.com/xfali/xlog v0.1.1/go.mod h1:W9nEm+z16pEh1HAOW9m/GuVk1h9FE29jv1byivczWcw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.3.0 h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=
