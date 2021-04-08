@@ -15,6 +15,7 @@ import (
 	"github.com/xfali/xlog"
 	"os"
 	"testing"
+	"time"
 )
 
 type a interface {
@@ -48,6 +49,10 @@ func (b *bImpl) BeanAfterSet() error {
 func (b *bImpl) BeanDestroy() error {
 	xlog.Infoln("bImpl destroyed")
 	return nil
+}
+
+type c struct {
+	V string `value:"userdata.value"`
 }
 
 type injectBean struct {
@@ -89,6 +94,27 @@ func TestApp(t *testing.T) {
 	}
 
 	app.Run()
+}
+
+func TestValue(t *testing.T) {
+	app := neve.NewFileConfigApplication("assets/application-test.yaml")
+	err := app.RegisterBean(processor.NewValueProcessor(processor.OptSetValueTag("valuePx", "value")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := &c{}
+	err = app.RegisterBean(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go app.Run()
+
+	time.Sleep(2*time.Second)
+
+	t.Log(v.V)
+	if v.V != "this is a test" {
+		t.Fatalf("not match")
+	}
 }
 
 type testProcessor struct {
