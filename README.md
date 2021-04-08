@@ -96,8 +96,8 @@ type bImpl struct {
 	V string `value:"userdata.value"`
 }
 ```
-* [neve-web](https://github.com/xfali/neve-core)
-* [neve-database](https://github.com/xfali/neve-database)
+* [neve-web](https://github.com/xfali/neve-web) neve的WEB扩展组件，用于集成WEB相关服务。
+* [neve-database](https://github.com/xfali/neve-database) neve的数据库扩展组件，用于集成数据库相关操作。
 
 ### 7. Bean生命周期
 注册的对象可以实现下述方法监听容器中的bean生命周期：
