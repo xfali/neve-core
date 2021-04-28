@@ -25,12 +25,12 @@ neve:
 
 userdata:
   value: "this is a test"
-  gopath: {{.Env.GOPATH}}
+  gopath: {{ env "GOPATH" }}
 ```
 * 【neve.inject.disable】是否关闭注入功能，默认false，即开启依赖注入
 * 【neve.inject.workers】并行注入的任务数，目前还未开放故默认为1
 * 【userdata】非内置配置属性，属于用户自定义的value，可自定义名称
-* 配置可使用{{.Env.ENV_NAME}}获取环境变量的值，在读取时进行替换。
+* 配置可使用{{ env "ENV_NAME" DEFAULT_VALUE }}或{{.Env.ENV_NAME}}获取环境变量的值，在读取时进行替换(规则见[fig](https://github.com/xfali/fig))。
 
 ### 3. 注册
 * 直接注册：RegisterBean

@@ -59,7 +59,10 @@ type ApplicationContext interface {
 }
 
 type ApplicationContextListener interface {
+	// 当有bean注册时调用
 	OnRefresh(ctx ApplicationContext)
+
+	// 事件通知
 	OnEvent(e ApplicationEvent, ctx ApplicationContext)
 }
 
@@ -145,7 +148,10 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 	}
 
 	if v, ok := o.(processor.Processor); ok {
-		ctx.addProcessor(v, true)
+		err = ctx.addProcessor(v, true)
+		if err != nil {
+			return err
+		}
 	}
 
 	ctx.listenerLock.Lock()
