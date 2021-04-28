@@ -33,10 +33,9 @@ type FileConfigApplication struct {
 
 type Opt func(*FileConfigApplication)
 
-func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplication {
-	prop, err := fig.LoadYamlFile(configPath)
-	if err != nil {
-		xlog.Errorln("load config file failed: ", err)
+func NewApplication(prop fig.Properties, opts ...Opt) *FileConfigApplication {
+	if prop == nil {
+		xlog.Errorln("Properties cannot be nil. ")
 		return nil
 	}
 	ret := &FileConfigApplication{
@@ -48,13 +47,22 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 		opt(ret)
 	}
 
-	err = ret.ctx.Init(prop)
+	err := ret.ctx.Init(prop)
 	if err != nil {
 		ret.logger.Fatalln(err)
 		return nil
 	}
 
 	return ret
+}
+
+func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplication {
+	prop, err := fig.LoadYamlFile(configPath)
+	if err != nil {
+		xlog.Errorln("load config file failed: ", err)
+		return nil
+	}
+	return NewApplication(prop, opts...)
 }
 
 func (app *FileConfigApplication) RegisterBean(o interface{}) error {
