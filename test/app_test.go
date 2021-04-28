@@ -53,6 +53,7 @@ func (b *bImpl) BeanDestroy() error {
 
 type c struct {
 	V string `value:"userdata.value"`
+	I int    `value:"userdata.test"`
 }
 
 type injectBean struct {
@@ -109,10 +110,15 @@ func TestValue(t *testing.T) {
 	}
 	go app.Run()
 
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
 	t.Log(v.V)
 	if v.V != "this is a test" {
+		t.Fatalf("not match")
+	}
+
+	t.Log(v.I)
+	if v.I != 100 {
 		t.Fatalf("not match")
 	}
 }

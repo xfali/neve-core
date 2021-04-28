@@ -6,3 +6,4 @@ neve:
 userdata:
   value: "this is a test"
   gopath: {{.Env.GOPATH}}
+  test: {{ env "NOT_EXIST" 100 }}
