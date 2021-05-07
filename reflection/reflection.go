@@ -75,3 +75,47 @@ func SmartCopySlice(dest, src reflect.Value) error {
 	}
 	return nil
 }
+
+func SmartCopyMap(dest, src reflect.Value) error {
+	destType := dest.Type()
+	destElemType := destType.Elem()
+	destKeyType := destType.Key()
+	srcType := src.Type()
+	if srcType.Kind() != reflect.Map {
+		return errors.New("Src Type is not a Map. " + srcType.String())
+	}
+	srcElemType := srcType.Elem()
+	srcKeyType := srcType.Key()
+
+	if destKeyType != srcKeyType {
+		return fmt.Errorf("expect key type: %s, but get %s. ", destKeyType.String(), srcKeyType.String())
+	}
+	if destType.Kind() == srcType.Kind() {
+		if destElemType.Kind() == srcElemType.Kind() {
+			dest.Set(src)
+		} else {
+			destTmp := dest
+			keys := src.MapKeys()
+			for _, key := range keys {
+				value := src.MapIndex(key)
+				ot := value.Type()
+				// interface
+				if destElemType.Kind() == reflect.Interface {
+					if ot.Implements(destElemType) {
+						dest.SetMapIndex(key, value)
+					}
+				} else if destElemType.Kind() == reflect.Ptr {
+					if destElemType == value.Type() {
+						dest.SetMapIndex(key, value)
+					} else if ot.ConvertibleTo(destElemType) {
+						dest.SetMapIndex(key,value.Convert(destElemType))
+					}
+				} else {
+					return errors.New("Type not match. ")
+				}
+			}
+			dest.Set(destTmp)
+		}
+	}
+	return nil
+}

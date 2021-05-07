@@ -363,24 +363,57 @@ func TestInjectSlice(t *testing.T) {
 	})
 }
 
+type testMap struct {
+	A map[string]a      `inject:""`
+	B map[string]a      `inject:""`
+	C map[string]a      `inject:"test"`
+	D map[string]*bImpl `inject:"test"`
+}
+
 func TestInjectMap(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
 		c := bean.NewContainer()
 		c.Register(&aImpl{})
 		c.RegisterByName("b", &bImpl{})
+		c.RegisterByName("test", map[string]*bImpl{
+			"test": &bImpl{},
+		})
 		i := injector.New()
 
-		d := dest2{}
+		d := testMap{
+			A: map[string]a{},
+			B: map[string]a{},
+			C: map[string]a{},
+			D: map[string]*bImpl{},
+		}
 		err := i.Inject(c, &d)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
+		for k, v := range d.A {
+			t.Logf("key: %s, value: %d", k, v.Get())
+			if v.Get() != 1 && v.Get() != 2 {
+				t.Fatal("inject A failed")
+			}
 		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
+		for k, v := range d.B {
+			t.Logf("key: %s, value: %d", k, v.Get())
+			if v.Get() != 1 && v.Get() != 2 {
+				t.Fatal("inject B failed")
+			}
+		}
+		for k, v := range d.C {
+			t.Logf("key: %s, value: %d", k, v.Get())
+			if v.Get() != 2 {
+				t.Fatal("inject C failed")
+			}
+		}
+		for k, v := range d.D {
+			t.Logf("key: %s, value: %d", k, v.Get())
+			if v.Get() != 2 {
+				t.Fatal("inject D failed")
+			}
 		}
 	})
 

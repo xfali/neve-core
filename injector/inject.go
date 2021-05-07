@@ -180,30 +180,17 @@ func (injector *defaultInjector) injectMap(c bean.Container, name string, v refl
 	elemType := vt.Elem()
 	o, ok := c.GetDefinition(name)
 	if ok {
-		v.Set(o.Value())
-		return nil
+		return reflection2.SmartCopyMap(v, o.Value())
 	} else {
 		if keyType.Kind() != reflect.String {
 			return errors.New("Key type must be string. ")
 		}
 		//自动注入
-		c.Scan(func(key string, value bean.Definition) bool {
-			ot := value.Type()
-			// interface
-			if elemType.Kind() == reflect.Interface {
-				if ot.Implements(elemType) {
-					v.SetMapIndex(reflect.ValueOf(key), value.Value())
-				}
-			} else if elemType.Kind() == reflect.Ptr {
-				if elemType == value.Type() {
-					v.SetMapIndex(reflect.ValueOf(key), value.Value())
-				} else if ot.ConvertibleTo(elemType) {
-					v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(elemType))
-				}
-			}
-
-			return true
-		})
+		destTmp := mapPutter{
+			v:        v,
+			elemType: elemType,
+		}
+		c.Scan(destTmp.Scan)
 		if v.Len() > 0 {
 			// cache to container
 			bean, err := bean.CreateBeanDefinition(v.Interface())
@@ -288,6 +275,34 @@ func (s *sliceAppender) Scan(key string, value bean.Definition) bool {
 			s.v = reflect.Append(s.v, value.Value())
 		} else if ot.ConvertibleTo(s.elemType) {
 			s.v = reflect.Append(s.v, value.Value().Convert(s.elemType))
+		}
+	}
+
+	return true
+}
+
+type mapPutter struct {
+	v        reflect.Value
+	elemType reflect.Type
+}
+
+func (s *mapPutter) Set(value reflect.Value) error {
+	value.Set(s.v)
+	return nil
+}
+
+func (s *mapPutter) Scan(key string, value bean.Definition) bool {
+	ot := value.Type()
+	// interface
+	if s.elemType.Kind() == reflect.Interface {
+		if ot.Implements(s.elemType) {
+			s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
+		}
+	} else if s.elemType.Kind() == reflect.Ptr {
+		if s.elemType == value.Type() {
+			s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
+		} else if ot.ConvertibleTo(s.elemType) {
+			s.v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(s.elemType))
 		}
 	}
 
