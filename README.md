@@ -60,6 +60,8 @@ type injectBean struct {
 注入类型支持：
 * interface（接口）：neve会自动选择实现对象注入或按指定名称注入
 * struct Pointer（结构体指针）：neve选择具体注册的结构体对象进行注入
+* slice：neve可按名称注入slice，也可以自动查询所有适配的对象添加到slice中
+* map：neve可按名称注入map，也可以自动查询所有适配的对象添加到map中
 
 ### 5. 注意事项
 1. 注入struct Pointer时，名称必须完全匹配：
