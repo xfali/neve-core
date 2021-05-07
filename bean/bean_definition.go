@@ -7,6 +7,7 @@ package bean
 
 import (
 	"errors"
+	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
 	"reflect"
 	"sync/atomic"
@@ -46,8 +47,10 @@ type objectDefinition struct {
 type DefinitionCreator func(o interface{}) (Definition, error)
 
 var beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
-	reflect.Ptr:  newObjectDefinition,
-	reflect.Func: newFunctionDefinition,
+	reflect.Ptr:   newObjectDefinition,
+	reflect.Func:  newFunctionDefinition,
+	reflect.Slice: newSliceDefinition,
+	reflect.Map:   newMapDefinition,
 }
 
 // 注册BeanDefinition创建器，使其能处理更多类型。
@@ -191,5 +194,91 @@ func (d *functionDefinition) AfterSet() error {
 }
 
 func (d *functionDefinition) Destroy() error {
+	return nil
+}
+
+type sliceDefinition struct {
+	name string
+	o    interface{}
+	t    reflect.Type
+}
+
+func newSliceDefinition(o interface{}) (Definition, error) {
+	t := reflect.TypeOf(o)
+	return &sliceDefinition{
+		name: reflection2.GetSliceName(t),
+		o:    o,
+		t:    t,
+	}, nil
+}
+
+func (d *sliceDefinition) Type() reflect.Type {
+	return d.t
+}
+
+func (d *sliceDefinition) Name() string {
+	return d.name
+}
+
+func (d *sliceDefinition) Value() reflect.Value {
+	return reflect.ValueOf(d.o)
+}
+
+func (d *sliceDefinition) Interface() interface{} {
+	return d.o
+}
+
+func (d *sliceDefinition) IsObject() bool {
+	return false
+}
+
+func (d *sliceDefinition) AfterSet() error {
+	return nil
+}
+
+func (d *sliceDefinition) Destroy() error {
+	return nil
+}
+
+type mapDefinition struct {
+	name string
+	o    interface{}
+	t    reflect.Type
+}
+
+func newMapDefinition(o interface{}) (Definition, error) {
+	t := reflect.TypeOf(o)
+	return &mapDefinition{
+		name: reflection2.GetMapName(t),
+		o:    o,
+		t:    t,
+	}, nil
+}
+
+func (d *mapDefinition) Type() reflect.Type {
+	return d.t
+}
+
+func (d *mapDefinition) Name() string {
+	return d.name
+}
+
+func (d *mapDefinition) Value() reflect.Value {
+	return reflect.ValueOf(d.o)
+}
+
+func (d *mapDefinition) Interface() interface{} {
+	return d.o
+}
+
+func (d *mapDefinition) IsObject() bool {
+	return false
+}
+
+func (d *mapDefinition) AfterSet() error {
+	return nil
+}
+
+func (d *mapDefinition) Destroy() error {
 	return nil
 }

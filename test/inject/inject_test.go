@@ -141,7 +141,229 @@ type dest2 struct {
 	C dest `inject:""`
 }
 
+type slice struct {
+	A []a      `inject:""`
+	B []a      `inject:""`
+	C []a      `inject:"test"`
+	D []*bImpl `inject:"test"`
+}
+
 func TestInjectStruct(t *testing.T) {
+	t.Run("inject once", func(t *testing.T) {
+		c := bean.NewContainer()
+		c.Register(&aImpl{})
+		c.RegisterByName("b", &bImpl{})
+		i := injector.New()
+
+		d := dest2{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+	})
+
+	t.Run("inject twice", func(t *testing.T) {
+		c := bean.NewContainer()
+		c.Register(&aImpl{})
+		c.RegisterByName("b", &bImpl{})
+		i := injector.New()
+
+		d := dest2{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+
+		err = i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+	})
+
+	t.Run("inject twice with modify", func(t *testing.T) {
+		c := bean.NewContainer()
+
+		c.Register(&aImpl{})
+		b := &bImpl{}
+		c.RegisterByName("b", b)
+		i := injector.New()
+
+		d := dest2{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		b.i = 3
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 3 {
+			t.Fatal("inject B failed")
+		}
+		if d.B2.Get() != 2 {
+			t.Fatal("inject B2 failed")
+		}
+
+		err = i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		b.i = 2
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+		//if d.B2.Get() != 3 {
+		//	t.Fatal("inject B2 failed")
+		//}
+		// struct只允许注入指针类型
+		if d.B2.Get() != 2 {
+			t.Fatal("inject B2 failed")
+		}
+	})
+}
+
+func TestInjectSlice(t *testing.T) {
+	t.Run("inject once", func(t *testing.T) {
+		c := bean.NewContainer()
+		c.Register(&aImpl{})
+		c.RegisterByName("b", &bImpl{})
+		c.RegisterByName("test", []*bImpl{
+			&bImpl{},
+		})
+		i := injector.New()
+
+		d := slice{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A[0].Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.A[1].Get() != 2 {
+			t.Fatal("inject A failed")
+		}
+		if d.B[0].Get() != 1 {
+			t.Fatal("inject B failed")
+		}
+		if d.B[1].Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+		if d.C[0].Get() != 2 {
+			t.Fatal("inject C failed")
+		}
+		if d.D[0].Get() != 2 {
+			t.Fatal("inject D failed")
+		}
+	})
+
+	t.Run("inject twice", func(t *testing.T) {
+		c := bean.NewContainer()
+		c.Register(&aImpl{})
+		c.RegisterByName("b", &bImpl{})
+		i := injector.New()
+
+		d := dest2{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+
+		err = i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+	})
+
+	t.Run("inject twice with modify", func(t *testing.T) {
+		c := bean.NewContainer()
+
+		c.Register(&aImpl{})
+		b := &bImpl{}
+		c.RegisterByName("b", b)
+		i := injector.New()
+
+		d := dest2{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		b.i = 3
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 3 {
+			t.Fatal("inject B failed")
+		}
+		if d.B2.Get() != 2 {
+			t.Fatal("inject B2 failed")
+		}
+
+		err = i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		b.i = 2
+		if d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+		//if d.B2.Get() != 3 {
+		//	t.Fatal("inject B2 failed")
+		//}
+		// struct只允许注入指针类型
+		if d.B2.Get() != 2 {
+			t.Fatal("inject B2 failed")
+		}
+	})
+}
+
+func TestInjectMap(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
 		c := bean.NewContainer()
 		c.Register(&aImpl{})

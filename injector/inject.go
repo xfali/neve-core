@@ -8,6 +8,7 @@ package injector
 import (
 	"errors"
 	"github.com/xfali/neve-core/bean"
+	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
@@ -38,6 +39,8 @@ func New(opts ...Opt) *defaultInjector {
 	ret.actuators = map[reflect.Kind]Actuator{
 		reflect.Interface: ret.injectInterface,
 		reflect.Struct:    ret.injectStruct,
+		reflect.Slice:     ret.injectSlice,
+		reflect.Map:       ret.injectMap,
 	}
 	for _, opt := range opts {
 		opt(ret)
@@ -135,6 +138,88 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 	return errors.New("Inject nothing, cannot find any Implementation: " + reflection.GetTypeName(vt))
 }
 
+func (injector *defaultInjector) injectSlice(c bean.Container, name string, v reflect.Value) error {
+	vt := v.Type()
+	if name == "" {
+		name = reflection2.GetSliceName(vt)
+	}
+	elemType := vt.Elem()
+	o, ok := c.GetDefinition(name)
+	if ok {
+		return reflection2.SmartCopySlice(v, o.Value())
+	} else {
+		//自动注入
+		destTmp := sliceAppender{
+			v:        v,
+			elemType: elemType,
+		}
+		c.Scan(destTmp.Scan)
+		destTmp.Set(v)
+		if v.Len() > 0 {
+			// cache to container
+			bean, err := bean.CreateBeanDefinition(v.Interface())
+			if err != nil {
+				injector.logger.Warnln(err)
+			}
+			err = c.PutDefinition(reflection2.GetSliceName(vt), bean)
+			if err != nil {
+				injector.logger.Warnln(err)
+			}
+			return nil
+		}
+	}
+	return errors.New("Inject nothing, cannot find any Implementation: " + reflection2.GetSliceName(vt))
+}
+
+func (injector *defaultInjector) injectMap(c bean.Container, name string, v reflect.Value) error {
+	vt := v.Type()
+	if name == "" {
+		name = reflection2.GetMapName(vt)
+	}
+	keyType := vt.Key()
+	elemType := vt.Elem()
+	o, ok := c.GetDefinition(name)
+	if ok {
+		v.Set(o.Value())
+		return nil
+	} else {
+		if keyType.Kind() != reflect.String {
+			return errors.New("Key type must be string. ")
+		}
+		//自动注入
+		c.Scan(func(key string, value bean.Definition) bool {
+			ot := value.Type()
+			// interface
+			if elemType.Kind() == reflect.Interface {
+				if ot.Implements(elemType) {
+					v.SetMapIndex(reflect.ValueOf(key), value.Value())
+				}
+			} else if elemType.Kind() == reflect.Ptr {
+				if elemType == value.Type() {
+					v.SetMapIndex(reflect.ValueOf(key), value.Value())
+				} else if ot.ConvertibleTo(elemType) {
+					v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(elemType))
+				}
+			}
+
+			return true
+		})
+		if v.Len() > 0 {
+			// cache to container
+			bean, err := bean.CreateBeanDefinition(v.Interface())
+			if err != nil {
+				injector.logger.Warnln(err)
+			}
+			err = c.PutDefinition(reflection2.GetMapName(vt), bean)
+			if err != nil {
+				injector.logger.Warnln(err)
+			}
+			return nil
+		}
+	}
+	return errors.New("Inject nothing, cannot find any Implementation: " + reflection2.GetMapName(vt))
+}
+
 func (injector *defaultInjector) injectStruct(c bean.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
@@ -179,4 +264,32 @@ func OptSetActuator(kind reflect.Kind, actuator Actuator) Opt {
 			injector.actuators[kind] = actuator
 		}
 	}
+}
+
+type sliceAppender struct {
+	v        reflect.Value
+	elemType reflect.Type
+}
+
+func (s *sliceAppender) Set(value reflect.Value) error {
+	value.Set(s.v)
+	return nil
+}
+
+func (s *sliceAppender) Scan(key string, value bean.Definition) bool {
+	ot := value.Type()
+	// interface
+	if s.elemType.Kind() == reflect.Interface {
+		if ot.Implements(s.elemType) {
+			s.v = reflect.Append(s.v, value.Value())
+		}
+	} else if s.elemType.Kind() == reflect.Ptr {
+		if s.elemType == value.Type() {
+			s.v = reflect.Append(s.v, value.Value())
+		} else if ot.ConvertibleTo(s.elemType) {
+			s.v = reflect.Append(s.v, value.Value().Convert(s.elemType))
+		}
+	}
+
+	return true
 }
