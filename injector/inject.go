@@ -168,7 +168,7 @@ func (injector *defaultInjector) injectSlice(c bean.Container, name string, v re
 			return nil
 		}
 	}
-	return errors.New("Inject nothing, cannot find any Implementation: " + reflection2.GetSliceName(vt))
+	return errors.New("Slice Inject nothing, cannot find any Implementation: " + reflection2.GetSliceName(vt))
 }
 
 func (injector *defaultInjector) injectMap(c bean.Container, name string, v reflect.Value) error {
@@ -204,7 +204,7 @@ func (injector *defaultInjector) injectMap(c bean.Container, name string, v refl
 			return nil
 		}
 	}
-	return errors.New("Inject nothing, cannot find any Implementation: " + reflection2.GetMapName(vt))
+	return errors.New("Map Inject nothing, cannot find any Implementation: " + reflection2.GetMapName(vt))
 }
 
 func (injector *defaultInjector) injectStruct(c bean.Container, name string, v reflect.Value) error {
@@ -266,17 +266,21 @@ func (s *sliceAppender) Set(value reflect.Value) error {
 func (s *sliceAppender) Scan(key string, value bean.Definition) bool {
 	ot := value.Type()
 	// interface
-	if s.elemType.Kind() == reflect.Interface {
-		if ot.Implements(s.elemType) {
-			s.v = reflect.Append(s.v, value.Value())
-		}
-	} else if s.elemType.Kind() == reflect.Ptr {
-		if s.elemType == value.Type() {
-			s.v = reflect.Append(s.v, value.Value())
-		} else if ot.ConvertibleTo(s.elemType) {
-			s.v = reflect.Append(s.v, value.Value().Convert(s.elemType))
-		}
+	if ot.AssignableTo(s.elemType) {
+		s.v = reflect.Append(s.v, value.Value())
 	}
+	//if s.elemType.Kind() == reflect.Interface {
+	//	if ot.Implements(s.elemType) {
+	//		s.v = reflect.Append(s.v, value.Value())
+	//	}
+	//} else if s.elemType.Kind() == reflect.Ptr {
+	//	if s.elemType == value.Type() || ot.AssignableTo(s.elemType) {
+	//		s.v = reflect.Append(s.v, value.Value())
+	//	}
+	//	//else if ot.ConvertibleTo(s.elemType) {
+	//	//	s.v = reflect.Append(s.v, value.Value().Convert(s.elemType))
+	//	//}
+	//}
 
 	return true
 }
@@ -294,17 +298,21 @@ func (s *mapPutter) Set(value reflect.Value) error {
 func (s *mapPutter) Scan(key string, value bean.Definition) bool {
 	ot := value.Type()
 	// interface
-	if s.elemType.Kind() == reflect.Interface {
-		if ot.Implements(s.elemType) {
-			s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
-		}
-	} else if s.elemType.Kind() == reflect.Ptr {
-		if s.elemType == value.Type() {
-			s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
-		} else if ot.ConvertibleTo(s.elemType) {
-			s.v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(s.elemType))
-		}
+	if ot.AssignableTo(s.elemType) {
+		s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
 	}
+	//if s.elemType.Kind() == reflect.Interface {
+	//	if ot.Implements(s.elemType) {
+	//		s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
+	//	}
+	//} else if s.elemType.Kind() == reflect.Ptr {
+	//	if s.elemType == value.Type() || ot.AssignableTo(s.elemType) {
+	//		s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
+	//	}
+	//	//else if ot.ConvertibleTo(s.elemType) {
+	//	//	s.v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(s.elemType))
+	//	//}
+	//}
 
 	return true
 }

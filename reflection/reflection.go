@@ -56,19 +56,23 @@ func SmartCopySlice(dest, src reflect.Value) error {
 				value := src.Index(i)
 				ot := value.Type()
 				// interface
-				if destElemType.Kind() == reflect.Interface {
-					if ot.Implements(destElemType) {
-						destTmp = reflect.Append(destTmp, value)
-					}
-				} else if destElemType.Kind() == reflect.Ptr {
-					if destElemType == value.Type() {
-						destTmp = reflect.Append(destTmp, value)
-					} else if ot.ConvertibleTo(destElemType) {
-						destTmp = reflect.Append(destTmp, value.Convert(destElemType))
-					}
-				} else {
-					return errors.New("Type not match. ")
+				if ot.AssignableTo(destElemType) {
+					destTmp = reflect.Append(destTmp, value)
 				}
+				//if destElemType.Kind() == reflect.Interface {
+				//	if ot.Implements(destElemType) {
+				//		destTmp = reflect.Append(destTmp, value)
+				//	}
+				//} else if destElemType.Kind() == reflect.Ptr {
+				//	if destElemType == value.Type() || ot.AssignableTo(destElemType) {
+				//		destTmp = reflect.Append(destTmp, value)
+				//	}
+				//	//else if ot.ConvertibleTo(destElemType) {
+				//	//	destTmp = reflect.Append(destTmp, value.Convert(destElemType))
+				//	//}
+				//} else {
+				//	//return errors.New("Type not match. ")
+				//}
 			}
 			dest.Set(destTmp)
 		}
@@ -100,19 +104,20 @@ func SmartCopyMap(dest, src reflect.Value) error {
 				value := src.MapIndex(key)
 				ot := value.Type()
 				// interface
-				if destElemType.Kind() == reflect.Interface {
-					if ot.Implements(destElemType) {
-						dest.SetMapIndex(key, value)
-					}
-				} else if destElemType.Kind() == reflect.Ptr {
-					if destElemType == value.Type() {
-						dest.SetMapIndex(key, value)
-					} else if ot.ConvertibleTo(destElemType) {
-						dest.SetMapIndex(key,value.Convert(destElemType))
-					}
-				} else {
-					return errors.New("Type not match. ")
+				if ot.AssignableTo(destElemType) {
+					dest.SetMapIndex(key, value)
 				}
+				//if destElemType.Kind() == reflect.Interface {
+				//	if ot.Implements(destElemType) {
+				//		dest.SetMapIndex(key, value)
+				//	}
+				//} else if destElemType.Kind() == reflect.Ptr {
+				//	if destElemType == value.Type() || ot.AssignableTo(destElemType) {
+				//		dest.SetMapIndex(key, value)
+				//	}
+				//} else {
+				//	//return errors.New("Type not match. ")
+				//}
 			}
 			dest.Set(destTmp)
 		}
