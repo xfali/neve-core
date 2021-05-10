@@ -8,6 +8,7 @@ package neve
 import (
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/appcontext"
+	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/xlog"
 )
 
@@ -87,5 +88,14 @@ func OptSetApplicationContext(ctx appcontext.ApplicationContext) Opt {
 func OptSetLogger(logger xlog.Logger) Opt {
 	return func(application *FileConfigApplication) {
 		application.logger = logger
+	}
+}
+
+func OptSetInjectTagName(name string) Opt {
+	return func(application *FileConfigApplication) {
+		application.ctx = appcontext.NewDefaultApplicationContext(
+			appcontext.OptSetInjector(injector.New(
+				injector.OptSetLogger(application.logger),
+				injector.OptSetInjectTagName(name))))
 	}
 }

@@ -56,6 +56,10 @@ type c struct {
 	I int    `value:"userdata.test"`
 }
 
+type testBean interface {
+	validate()
+}
+
 type injectBean struct {
 	A  a      `inject:""`
 	B  a      `inject:"b"`
@@ -63,8 +67,65 @@ type injectBean struct {
 	Bf a      `inject:"c"`
 }
 
+func (v *injectBean) validate() {
+	if v.A.Get() != "0" {
+		xlog.Fatalln("expect: 0 but get: ", v.A.Get())
+	}
+	if v.B.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.B.Get())
+	}
+	if v.BS.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
+	}
+	if v.Bf.Get() != "hello world" {
+		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	}
+}
+
+type injectBeanB struct {
+	A  a      `Autowired:""`
+	B  a      `Autowired:"b"`
+	BS *bImpl `Autowired:"b"`
+	Bf a      `Autowired:"c"`
+}
+
+func (v *injectBeanB) validate() {
+	if v.A.Get() != "0" {
+		xlog.Fatalln("expect: 0 but get: ", v.A.Get())
+	}
+	if v.B.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.B.Get())
+	}
+	if v.BS.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
+	}
+	if v.Bf.Get() != "hello world" {
+		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	}
+}
+
 func TestApp(t *testing.T) {
-	app := neve.NewFileConfigApplication("assets/application-test.yaml")
+	t.Run("default", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		o := &injectBean{}
+		testApp(app, t, o)
+		if o.A == nil || o.B == nil || o.Bf == nil || o.BS == nil {
+			t.Fatal("not match")
+		}
+	})
+
+	t.Run("changeTag", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml",
+			neve.OptSetInjectTagName("Autowired"))
+		o := &injectBeanB{}
+		testApp(app, t, o)
+		if o.A == nil || o.B == nil || o.Bf == nil || o.BS == nil {
+			t.Fatal("not match")
+		}
+	})
+}
+
+func testApp(app neve.Application, t *testing.T, o interface{}) {
 	err := app.RegisterBean(processor.NewValueProcessor())
 	if err != nil {
 		t.Fatal(err)
@@ -89,20 +150,36 @@ func TestApp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = app.RegisterBean(&injectBean{})
+	err = app.RegisterBean(o)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	app.Run()
+	go app.Run()
+	time.Sleep(2 * time.Second)
 }
 
 func TestValue(t *testing.T) {
-	app := neve.NewFileConfigApplication("assets/application-test.yaml")
+	t.Run("default", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		o := &injectBean{}
+		testvalue(app, t, o)
+	})
+
+	t.Run("change tag name", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml",
+			neve.OptSetInjectTagName("Autowired"))
+		o := &injectBeanB{}
+		testvalue(app, t, o)
+	})
+}
+
+func testvalue(app neve.Application, t *testing.T, o interface{}) {
 	err := app.RegisterBean(processor.NewValueProcessor(processor.OptSetValueTag("valuePx", "value")))
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	v := &c{}
 	err = app.RegisterBean(v)
 	if err != nil {
@@ -124,7 +201,7 @@ func TestValue(t *testing.T) {
 }
 
 type testProcessor struct {
-	injectBean *injectBean
+	injectBean testBean
 }
 
 func (p *testProcessor) Init(conf fig.Properties, container bean.Container) error {
@@ -135,7 +212,7 @@ func (p *testProcessor) Classify(o interface{}) (bool, error) {
 	if x, ok := o.(*bImpl); ok {
 		xlog.Infoln("bImpl value is: ", x.V)
 	}
-	if x, ok := o.(*injectBean); ok {
+	if x, ok := o.(testBean); ok {
 		p.injectBean = x
 	}
 	return true, nil
@@ -143,18 +220,7 @@ func (p *testProcessor) Classify(o interface{}) (bool, error) {
 
 func (p *testProcessor) Process() error {
 	v := p.injectBean
-	if v.A.Get() != "0" {
-		xlog.Fatalln("expect: 0 but get: ", v.A.Get())
-	}
-	if v.B.Get() != "this is a test" {
-		xlog.Fatalln("expect: 'this is a test' but get: ", v.B.Get())
-	}
-	if v.BS.Get() != "this is a test" {
-		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
-	}
-	if v.Bf.Get() != "hello world" {
-		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
-	}
+	v.validate()
 	xlog.Infoln("all pass, exit")
 	os.Exit(0)
 	return nil

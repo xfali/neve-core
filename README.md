@@ -46,7 +46,8 @@ neverror.PanicError(app.RegisterBeanByName("b", &bImpl{}))
 ```
 
 ### 4. 注入
-使用tag：inject进行注入，注意注入的field首字母需大写（Public）
+#### 4.1 使用tag：inject
+注意注入的field首字母需大写（Public）
 * 当inject的value为空时自动选择注入
 * 当inject的value不为空时则按名称注入
 ```
@@ -57,11 +58,23 @@ type injectBean struct {
 	Bf a      `inject:"c"`
 }
 ```
-注入类型支持：
+#### 4.2 注入类型支持：
 * interface（接口）：neve会自动选择实现对象注入或按指定名称注入
 * struct Pointer（结构体指针）：neve选择具体注册的结构体对象进行注入
 * slice：neve可按名称注入slice，也可以自动查询所有适配的对象添加到slice中
 * map：neve可按名称注入map，也可以自动查询所有适配的对象添加到map中
+
+#### 4.3 自定义tag：
+```
+app := neve.NewFileConfigApplication("assets/application-test.yaml",
+			neve.OptSetInjectTagName("Autowired"))
+type injectBeanB struct {
+	A  a      `Autowired:""`
+	B  a      `Autowired:"b"`
+	BS *bImpl `Autowired:"b"`
+	Bf a      `Autowired:"c"`
+}
+```
 
 ### 5. 注意事项
 1. 注入struct Pointer时，名称必须完全匹配：

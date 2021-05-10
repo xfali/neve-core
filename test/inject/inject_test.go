@@ -720,3 +720,35 @@ func TestInjectComplex(t *testing.T) {
 		t.Fatal("expect 11 but get: ", dest.Bs.Get())
 	}
 }
+
+type destChange struct {
+	A a `Autowired:""`
+	B a `Autowired:"b"`
+	// Would not inject
+	C io.Writer `Autowired:""`
+}
+func TestInjectTagChange(t *testing.T) {
+	t.Run("inject once", func(t *testing.T) {
+		c := bean.NewContainer()
+		c.Register(&aImpl{})
+		c.RegisterByName("b", &bImpl{})
+		i := injector.New(injector.OptSetInjectTagName("Autowired"))
+
+		d := destChange{}
+		err := i.Inject(c, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if d.A == nil || d.A.Get() != 1 {
+			t.Fatal("inject A failed")
+		}
+		if d.B == nil || d.B.Get() != 2 {
+			t.Fatal("inject B failed")
+		}
+
+		if d.C != nil {
+			t.Fatal("inject C must failed")
+		}
+	})
+}

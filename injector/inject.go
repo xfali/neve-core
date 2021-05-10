@@ -19,6 +19,8 @@ const (
 )
 
 type Injector interface {
+	// 从对象容器中注入对象到参数o
+	// return: 当注入出错时抛出
 	Inject(container bean.Container, o interface{}) error
 }
 
@@ -27,6 +29,7 @@ type Actuator func(c bean.Container, name string, v reflect.Value) error
 type defaultInjector struct {
 	logger    xlog.Logger
 	actuators map[reflect.Kind]Actuator
+	tagName   string
 	recursive bool
 }
 
@@ -34,7 +37,8 @@ type Opt func(*defaultInjector)
 
 func New(opts ...Opt) *defaultInjector {
 	ret := &defaultInjector{
-		logger: xlog.GetLogger(),
+		logger:  xlog.GetLogger(),
+		tagName: injectTagName,
 	}
 	ret.actuators = map[reflect.Kind]Actuator{
 		reflect.Interface: ret.injectInterface,
@@ -73,7 +77,7 @@ func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.
 
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
-		tag, ok := field.Tag.Lookup(injectTagName)
+		tag, ok := field.Tag.Lookup(injector.tagName)
 		if ok {
 			fieldValue := v.Field(i)
 			fieldType := fieldValue.Type()
@@ -235,6 +239,12 @@ func (injector *defaultInjector) injectStruct(c bean.Container, name string, v r
 func OptSetLogger(v xlog.Logger) Opt {
 	return func(injector *defaultInjector) {
 		injector.logger = v
+	}
+}
+
+func OptSetInjectTagName(v string) Opt {
+	return func(injector *defaultInjector) {
+		injector.tagName = v
 	}
 }
 
