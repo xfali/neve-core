@@ -10,6 +10,7 @@ import (
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core"
 	"github.com/xfali/neve-core/bean"
+	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
@@ -117,6 +118,16 @@ func TestApp(t *testing.T) {
 	t.Run("changeTag", func(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml",
 			neve.OptSetInjectTagName("Autowired"))
+		o := &injectBeanB{}
+		testApp(app, t, o)
+		if o.A == nil || o.B == nil || o.Bf == nil || o.BS == nil {
+			t.Fatal("not match")
+		}
+	})
+
+	t.Run("change default tag", func(t *testing.T) {
+		injector.InjectTagName = "Autowired"
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
 		o := &injectBeanB{}
 		testApp(app, t, o)
 		if o.A == nil || o.B == nil || o.Bf == nil || o.BS == nil {

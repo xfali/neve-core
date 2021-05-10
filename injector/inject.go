@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	injectTagName = "inject"
+	defaultInjectTagName = "inject"
 )
+
+var InjectTagName = defaultInjectTagName
 
 type Injector interface {
 	// 从对象容器中注入对象到参数o
@@ -38,7 +40,7 @@ type Opt func(*defaultInjector)
 func New(opts ...Opt) *defaultInjector {
 	ret := &defaultInjector{
 		logger:  xlog.GetLogger(),
-		tagName: injectTagName,
+		tagName: InjectTagName,
 	}
 	ret.actuators = map[reflect.Kind]Actuator{
 		reflect.Interface: ret.injectInterface,
