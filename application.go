@@ -18,10 +18,14 @@ type Application interface {
 	// 支持注册
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
+	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
 
 	// 使用指定名称注册对象
-	// 支持注册struct指针、struct/interface的构造函数 func() TYPE
+	// 支持注册
+	//  1、interface、struct指针，注册名称使用【类型名称】；
+	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
+	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
 
 	// 启动应用容器

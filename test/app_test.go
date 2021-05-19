@@ -59,15 +59,19 @@ type c struct {
 
 type order1 struct {
 	t *testing.T
+	s string
 }
 
 func (o *order1) BeanAfterSet() error {
 	o.t.Log("order1 set")
+	o.s = "order1"
 	return nil
 }
 
 type order2 struct {
 	t *testing.T
+
+	s string
 	O1 *order1 `inject:""`
 }
 
@@ -76,6 +80,11 @@ func (o *order2) BeanAfterSet() error {
 	if o.O1 == nil {
 		o.t.Fatalf("cannot nil!")
 	}
+	o.s = "order2"
+	if o.O1.s == "" {
+		o.t.Fatalf("cannot empty!")
+	}
+	o.t.Log(o.O1.s)
 	return nil
 }
 
@@ -90,9 +99,17 @@ func (o *order3) BeanAfterSet() error {
 	if o.O1 == nil {
 		o.t.Fatalf("O1 cannot nil!")
 	}
+	if o.O1.s == "" {
+		o.t.Fatalf("O1 cannot empty!")
+	}
+	o.t.Log(o.O1.s)
 	if o.O2 == nil {
 		o.t.Fatalf("O2 cannot nil!")
 	}
+	if o.O2.s == "" {
+		o.t.Fatalf("O2 cannot empty!")
+	}
+	o.t.Log(o.O2.s)
 	return nil
 }
 
@@ -311,7 +328,7 @@ func testOrder(app neve.Application, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = app.RegisterBean(&order1{t:t}, bean.SetOrder(1))
+	err = app.RegisterBean(&order1{t:t}, bean.SetOrder(-1))
 	if err != nil {
 		t.Fatal(err)
 	}

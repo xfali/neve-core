@@ -7,9 +7,11 @@ package bean
 
 type Container interface {
 	// 注册对象
+	// opts添加bean注册的配置，详情查看RegisterOpt
 	Register(o interface{}, opts ...RegisterOpt) error
 
 	// 根据名称注册对象
+	// opts添加bean注册的配置，详情查看RegisterOpt
 	RegisterByName(name string, o interface{}, opts ...RegisterOpt) error
 
 	// 根据名称获得对象

@@ -34,9 +34,11 @@ type ApplicationContext interface {
 	Init(config fig.Properties) error
 
 	// 注册对象
+	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
 
 	// 使用指定名称注册对象
+	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
 
 	// 根据名称获得对象，如果容器中包含该对象，则返回对象和true否则返回nil和false
