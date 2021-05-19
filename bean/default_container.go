@@ -15,6 +15,7 @@ import (
 
 const (
 	defaultPoolSize = 128
+	defaultOrder    = 0
 )
 
 func NewContainer() *defaultContainer {
@@ -29,7 +30,9 @@ type elem struct {
 }
 
 func newElem(opts ...RegisterOpt) *elem {
-	ret := &elem{}
+	ret := &elem{
+		order: defaultOrder,
+	}
 	for _, opt := range opts {
 		opt(ret)
 	}

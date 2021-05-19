@@ -57,6 +57,45 @@ type c struct {
 	I int    `value:"userdata.test"`
 }
 
+type order1 struct {
+	t *testing.T
+}
+
+func (o *order1) BeanAfterSet() error {
+	o.t.Log("order1 set")
+	return nil
+}
+
+type order2 struct {
+	t *testing.T
+	O1 *order1 `inject:""`
+}
+
+func (o *order2) BeanAfterSet() error {
+	o.t.Log("order2 set")
+	if o.O1 == nil {
+		o.t.Fatalf("cannot nil!")
+	}
+	return nil
+}
+
+type order3 struct {
+	t *testing.T
+	O1 *order1 `inject:""`
+	O2 *order2 `inject:""`
+}
+
+func (o *order3) BeanAfterSet() error {
+	o.t.Log("order3 set")
+	if o.O1 == nil {
+		o.t.Fatalf("O1 cannot nil!")
+	}
+	if o.O2 == nil {
+		o.t.Fatalf("O2 cannot nil!")
+	}
+	return nil
+}
+
 type testBean interface {
 	validate()
 }
@@ -249,4 +288,34 @@ func TestPanic(t *testing.T) {
 		return
 	}()
 	t.Log(err)
+}
+
+func TestOrder(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		testOrder(app, t)
+	})
+}
+
+func testOrder(app neve.Application, t *testing.T) {
+	err := app.RegisterBean(processor.NewValueProcessor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBean(&order2{t:t}, bean.SetOrder(2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBeanByName("c", &order3{t:t}, bean.SetOrder(3))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBean(&order1{t:t}, bean.SetOrder(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go app.Run()
+	time.Sleep(2 * time.Second)
 }

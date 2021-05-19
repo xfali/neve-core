@@ -33,6 +33,7 @@ userdata:
 * 配置可使用{{ env "ENV_NAME" DEFAULT_VALUE }}或{{.Env.ENV_NAME}}获取环境变量的值，在读取时进行替换(规则见[fig](https://github.com/xfali/fig))。
 
 ### 3. 注册
+#### 3.1 快速入门
 * 直接注册：RegisterBean
 * 按名称注册：RegisterBeanByName
 ```
@@ -43,6 +44,12 @@ app.RegisterBeanByName("b", &bImpl{})
 // 可以用下述方式快速抛出错误
 neverror.PanicError(app.RegisterBean(&aImpl{v: "0"}))
 neverror.PanicError(app.RegisterBeanByName("b", &bImpl{}))
+```
+#### 3.2 注册参数
+neve在注册时可以添加配置参数，目前支持的配置参数有
+* order：影响注入的顺序（按从小到大排序，默认为0），同时也影响调用BeanAfterSet回调的顺序。
+```
+app.RegisterBean(NewBean(), bean.SetOrder(2))
 ```
 
 ### 4. 注入
