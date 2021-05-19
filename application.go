@@ -8,6 +8,7 @@ package neve
 import (
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/appcontext"
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/xlog"
 )
@@ -17,11 +18,11 @@ type Application interface {
 	// 支持注册
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
-	RegisterBean(o interface{}) error
+	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
 
 	// 使用指定名称注册对象
 	// 支持注册struct指针、struct/interface的构造函数 func() TYPE
-	RegisterBeanByName(name string, o interface{}) error
+	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
 
 	// 启动应用容器
 	Run() error
@@ -66,12 +67,12 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 	return NewApplication(prop, opts...)
 }
 
-func (app *FileConfigApplication) RegisterBean(o interface{}) error {
-	return app.ctx.RegisterBean(o)
+func (app *FileConfigApplication) RegisterBean(o interface{}, opts ...bean.RegisterOpt) error {
+	return app.ctx.RegisterBean(o, opts...)
 }
 
-func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{}) error {
-	return app.ctx.RegisterBeanByName(name, o)
+func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error {
+	return app.ctx.RegisterBeanByName(name, o, opts...)
 }
 
 func (app *FileConfigApplication) Run() error {

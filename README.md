@@ -83,6 +83,7 @@ type injectBeanB struct {
 1. 注入interface时：
 * 如注册时使用RegisterBeanByName方法，则inject的tag value必须与注册时的name完全匹配，否则无法注入。
 * 如注册时使用RegisterBean方法，则inject的tag value应为空，neve会自动匹配实现interface的对象进行注入。
+* 如注册时使用RegisterBean方法，inject的tag value不为空，neve首先也会进行名称匹配，如未匹配成功也会自动匹配实现interface的对象进行注入。
 * 如注册时使用RegisterBeanByName方法且inject的tag value为空，则不会注入该对象。
 
 ### 6. 处理器

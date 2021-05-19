@@ -34,10 +34,10 @@ type ApplicationContext interface {
 	Init(config fig.Properties) error
 
 	// 注册对象
-	RegisterBean(o interface{}) error
+	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
 
 	// 使用指定名称注册对象
-	RegisterBeanByName(name string, o interface{}) error
+	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
 
 	// 根据名称获得对象，如果容器中包含该对象，则返回对象和true否则返回nil和false
 	GetBean(name string) (interface{}, bool)
@@ -81,7 +81,7 @@ type defaultApplicationContext struct {
 	processorsLock sync.Mutex
 
 	disableInject bool
-	curState     int32
+	curState      int32
 }
 
 func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
@@ -121,11 +121,11 @@ func (ctx *defaultApplicationContext) isInitializing() bool {
 	return atomic.LoadInt32(&ctx.curState) == statusInitializing
 }
 
-func (ctx *defaultApplicationContext) RegisterBean(o interface{}) error {
-	return ctx.RegisterBeanByName("", o)
+func (ctx *defaultApplicationContext) RegisterBean(o interface{}, opts ...bean.RegisterOpt) error {
+	return ctx.RegisterBeanByName("", o, opts...)
 }
 
-func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interface{}) error {
+func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error {
 	if ctx.isInitializing() {
 		return errors.New("Initializing, cannot register new object. ")
 	}
@@ -135,9 +135,9 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 	}
 	var err error
 	if name == "" {
-		err = ctx.container.Register(o)
+		err = ctx.container.Register(o, opts...)
 	} else {
-		err = ctx.container.RegisterByName(name, o)
+		err = ctx.container.RegisterByName(name, o, opts...)
 	}
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func (ctx *defaultApplicationContext) NotifyListeners(e ApplicationEvent) {
 	if ApplicationEventInitialized == e {
 		// 第一次初始化，注入所有对象
 		if atomic.CompareAndSwapInt32(&ctx.curState, statusNone, statusInitializing) {
-			if !ctx.disableInject{
+			if !ctx.disableInject {
 				ctx.injectAll()
 			}
 			ctx.classifyBean()
