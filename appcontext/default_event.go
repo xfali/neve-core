@@ -204,36 +204,57 @@ func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
 	}
 }
 
-type PayloadEventListener struct {
+type payloadInvoker struct {
 	et reflect.Type
 	fv reflect.Value
 }
 
-// o:获得payload的consumer 类型func(Type)
-func NewPayloadEventListener(o interface{}) *PayloadEventListener {
-	ret := &PayloadEventListener{
+func (invoker *payloadInvoker) Invoke(payload interface{}) bool {
+	t := reflect.TypeOf(payload)
+	if t.AssignableTo(invoker.et) {
+		invoker.fv.Call([]reflect.Value{reflect.ValueOf(payload)})
+		return true
 	}
-	err := ret.RefreshPayloadHandler(o)
+	return false
+}
+
+type PayloadEventListener struct {
+	invokers []*payloadInvoker
+}
+
+// o:获得payload的consumer 类型func(Type)
+func NewPayloadEventListener(consumer ...interface{}) *PayloadEventListener {
+	ret := &PayloadEventListener{
+		invokers: make([]*payloadInvoker, 0, len(consumer)),
+	}
+	err := ret.RefreshPayloadHandler(consumer...)
 	if err != nil {
 		panic(err)
 	}
 	return ret
 }
 
-func (l *PayloadEventListener) RefreshPayloadHandler(o interface{}) error {
-	t := reflect.TypeOf(o)
-	if t.Kind() != reflect.Func {
-		return errors.New("Param is not a function. ")
+func (l *PayloadEventListener) RefreshPayloadHandler(consumer ...interface{}) error {
+	if len(consumer) == 0 {
+		return errors.New("payload callers is nil")
 	}
+	for _, o := range consumer {
+		t := reflect.TypeOf(o)
+		if t.Kind() != reflect.Func {
+			return errors.New("Param is not a function. ")
+		}
 
-	if t.NumIn() != 1 {
-		return errors.New("Param is not match, expect func(ApplicationEvent). ")
+		if t.NumIn() != 1 {
+			return errors.New("Param is not match, expect func(ApplicationEvent). ")
+		}
+
+		et := t.In(0)
+
+		l.invokers = append(l.invokers, &payloadInvoker{
+			et: et,
+			fv: reflect.ValueOf(o),
+		})
 	}
-
-	et := t.In(0)
-
-	l.et = et
-	l.fv = reflect.ValueOf(o)
 
 	return nil
 }
@@ -254,12 +275,10 @@ func NewPayloadApplicationEvent(payload interface{}) *PayloadApplicationEvent {
 }
 
 func (l *PayloadEventListener) OnApplicationEvent(e ApplicationEvent) {
-	if l.fv.IsValid() {
+	if len(l.invokers) > 0 {
 		if pe, ok := e.(*PayloadApplicationEvent); ok {
-			payload := pe.payload
-			t := reflect.TypeOf(payload)
-			if t.AssignableTo(l.et) {
-				l.fv.Call([]reflect.Value{reflect.ValueOf(payload)})
+			for _, invoker := range l.invokers {
+				invoker.Invoke(pe.payload)
 			}
 		}
 	}

@@ -391,14 +391,14 @@ func (l *listener) payload(payload string) {
 	if payload != "hello world" {
 		l.t.Fatal("not match")
 	}
-	l.t.Log(payload)
+	l.t.Log("listener payload", payload)
 }
 
 func (l *listener) payloadA(payload a) {
 	if payload.Get() != "hello world2" {
 		l.t.Fatal("not match")
 	}
-	l.t.Log("listener", payload.Get())
+	l.t.Log("listener payloadA", payload.Get())
 }
 
 type listener2 struct {
@@ -410,7 +410,7 @@ func (l *listener2) payloadA(payload a) {
 	if payload.Get() != "hello world2" {
 		l.t.Fatal("not match")
 	}
-	l.t.Log("listener2", payload.Get())
+	l.t.Log("listener2 payloadA", payload.Get())
 }
 
 type listener3 struct {
@@ -457,6 +457,11 @@ func testListener(app neve.Application, t *testing.T) {
 	l2.t = t
 	l2.RefreshPayloadHandler(l2.payloadA)
 	err = app.RegisterBean(l2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBeanByName("C", appcontext.NewPayloadEventListener(f.payload, f.payloadA, l2.payloadA))
 	if err != nil {
 		t.Fatal(err)
 	}
