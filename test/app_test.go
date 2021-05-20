@@ -413,6 +413,21 @@ func (l *listener2) payloadA(payload a) {
 	l.t.Log("listener2", payload.Get())
 }
 
+type listener3 struct {
+	t *testing.T
+}
+
+func (l *listener3) GetApplicationEventConsumer() interface{} {
+	return l.handlerEvent
+}
+
+func (l *listener3) handlerEvent(event *customerEvent) {
+	if event.payload != "hello world" {
+		l.t.Fatal("not match")
+	}
+	l.t.Log("listener3", event.payload)
+}
+
 func TestListener(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml")
@@ -442,6 +457,13 @@ func testListener(app neve.Application, t *testing.T) {
 	l2.t = t
 	l2.RefreshPayloadHandler(l2.payloadA)
 	err = app.RegisterBean(l2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l3 := &listener3{}
+	l3.t = t
+	err = app.RegisterBean(l3)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -137,7 +137,8 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return err
 	}
 
-	if l, ok := o.(ApplicationEventListener); ok {
+	l := ctx.classifyListenerInterface(o)
+	if l != nil {
 		ctx.addListener(l, true)
 	}
 
@@ -213,12 +214,34 @@ func (ctx *defaultApplicationContext) AddListeners(listeners ...interface{}) {
 }
 
 func (ctx *defaultApplicationContext) processListener(o interface{}) {
+	l := ctx.classifyListenerInterface(o)
+	if l != nil {
+		ctx.addListener(l, true)
+		return
+	}
+
 	l, err := parseListener(o)
 	if err != nil {
 		//ctx.logger.Errorln(err)
 	} else if l != nil {
 		ctx.addListener(l, true)
 	}
+}
+
+func (ctx *defaultApplicationContext) classifyListenerInterface(o interface{}) ApplicationEventListener {
+	if l, ok := o.(ApplicationEventListener); ok {
+		return l
+	}
+
+	if c, ok := o.(ApplicationEventConsumer); ok {
+		l, err := parseListener(c.GetApplicationEventConsumer())
+		if err != nil {
+			ctx.logger.Errorln(err)
+			return nil
+		}
+		return l
+	}
+	return nil
 }
 
 func (ctx *defaultApplicationContext) PublishEvent(e ApplicationEvent) error {
@@ -387,10 +410,6 @@ type eventProcessor struct {
 }
 
 func parseListener(o interface{}) (ApplicationEventListener, error) {
-	if l, ok := o.(ApplicationEventListener); ok {
-		return l, nil
-	}
-
 	t := reflect.TypeOf(o)
 	if t.Kind() != reflect.Func {
 		return nil, errors.New("Param is not a function. ")
