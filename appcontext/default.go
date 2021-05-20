@@ -137,7 +137,9 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return err
 	}
 
-	ctx.processListener(o)
+	if l, ok := o.(ApplicationEventListener); ok {
+		ctx.addListener(l, true)
+	}
 
 	if v, ok := o.(ApplicationContextAware); ok {
 		ctx.addAware(v, true)
@@ -416,5 +418,66 @@ func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
 	//}
 	if t.AssignableTo(ep.et) {
 		ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
+	}
+}
+
+type PayloadListener struct {
+	et reflect.Type
+	fv reflect.Value
+}
+
+// o:获得payload的consumer 类型func(Type)
+func NewPayloadListener(o interface{}) *PayloadListener {
+	ret := &PayloadListener{
+	}
+	err := ret.RefreshPayloadHandler(o)
+	if err != nil {
+		panic(err)
+	}
+	return ret
+}
+
+func (l *PayloadListener) RefreshPayloadHandler(o interface{}) error {
+	t := reflect.TypeOf(o)
+	if t.Kind() != reflect.Func {
+		return errors.New("Param is not a function. ")
+	}
+
+	if t.NumIn() != 1 {
+		return errors.New("Param is not match, expect func(ApplicationEvent). ")
+	}
+
+	et := t.In(0)
+
+	l.et = et
+	l.fv = reflect.ValueOf(o)
+
+	return nil
+}
+
+type PayloadApplicationEvent struct {
+	BaseApplicationEvent
+	payload interface{}
+}
+
+func NewPayloadApplicationEvent(payload interface{}) *PayloadApplicationEvent {
+	if payload == nil {
+		return nil
+	}
+	e := PayloadApplicationEvent{}
+	e.UpdateTime()
+	e.payload = payload
+	return &e
+}
+
+func (l *PayloadListener) OnApplicationEvent(e ApplicationEvent) {
+	if l.fv.IsValid() {
+		if pe, ok := e.(*PayloadApplicationEvent); ok {
+			payload := pe.payload
+			t := reflect.TypeOf(payload)
+			if t.AssignableTo(l.et) {
+				l.fv.Call([]reflect.Value{reflect.ValueOf(payload)})
+			}
+		}
 	}
 }

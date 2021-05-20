@@ -379,10 +379,38 @@ func (l *listener) OnApplicationEvent(event appcontext.ApplicationEvent) {
 func (l *listener) EventStarted(event *appcontext.ContextStartedEvent) {
 	l.t.Log("ContextStartedEvent:", event.OccurredTime())
 	event.GetContext().PublishEvent(newCustomerEvent("hello world"))
+	event.GetContext().PublishEvent(appcontext.NewPayloadApplicationEvent("hello world"))
+	event.GetContext().PublishEvent(appcontext.NewPayloadApplicationEvent(&aImpl{v: "hello world2"}))
 }
 
 func (l *listener) EventStopped(event *appcontext.ContextStoppedEvent) {
 	l.t.Log("ContextStoppedEvent:", event.OccurredTime())
+}
+
+func (l *listener) payload(payload string) {
+	if payload != "hello world" {
+		l.t.Fatal("not match")
+	}
+	l.t.Log(payload)
+}
+
+func (l *listener) payloadA(payload a) {
+	if payload.Get() != "hello world2" {
+		l.t.Fatal("not match")
+	}
+	l.t.Log("listener", payload.Get())
+}
+
+type listener2 struct {
+	appcontext.PayloadListener
+	t *testing.T
+}
+
+func (l *listener2) payloadA(payload a) {
+	if payload.Get() != "hello world2" {
+		l.t.Fatal("not match")
+	}
+	l.t.Log("listener2", payload.Get())
 }
 
 func TestListener(t *testing.T) {
@@ -395,7 +423,28 @@ func TestListener(t *testing.T) {
 
 func testListener(app neve.Application, t *testing.T) {
 	f := &listener{t: t}
-	app.AddListeners(f, f.Event, f.EventStarted, f.EventStopped)
+	app.AddListeners(
+		f,
+		f.Event,
+		f.EventStarted,
+		f.EventStopped,
+	)
+	err := app.RegisterBean(appcontext.NewPayloadListener(f.payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBeanByName("A", appcontext.NewPayloadListener(f.payloadA))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l2 := &listener2{}
+	l2.t = t
+	l2.RefreshPayloadHandler(l2.payloadA)
+	err = app.RegisterBean(l2)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	go app.Run()
 }
