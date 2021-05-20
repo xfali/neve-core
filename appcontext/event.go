@@ -14,13 +14,15 @@ type ApplicationEvent interface {
 	OccurredTime() time.Time
 }
 
-type ApplicationContextAware interface {
-	SetApplicationContext(cxt ApplicationContext)
-}
-
 type ApplicationEventPublisher interface {
 	// 发送Context事件
 	PublishEvent(e ApplicationEvent) error
+}
+
+type ApplicationEventListener interface {
+	// 默认事件监听器接口
+	// 监听器应尽快处理事件，耗时操作请使用协程
+	OnApplicationEvent(e ApplicationEvent)
 }
 
 type ApplicationEventHandler interface {
@@ -29,10 +31,19 @@ type ApplicationEventHandler interface {
 	AddListeners(listeners ...interface{})
 }
 
-type ApplicationEventListener interface {
-	// 默认事件监听器接口
-	// 监听器应尽快处理事件，耗时操作请使用协程
-	OnApplicationEvent(e ApplicationEvent)
+type ApplicationEventProcessor interface {
+	ApplicationEventPublisher
+	ApplicationEventHandler
+
+	// 同步通知事件
+	// 不同于PublishEvent，NotifyEvent在Processor Close之后仍然能向Listener发送事件。
+	NotifyEvent(e ApplicationEvent) error
+
+	// 启动处理器
+	Start() error
+
+	// 停止处理
+	Close() error
 }
 
 type ApplicationEventConsumer interface {
@@ -45,7 +56,7 @@ type BaseApplicationEvent struct {
 	timestamp time.Time
 }
 
-func (e *BaseApplicationEvent) UpdateTime() {
+func (e *BaseApplicationEvent) ResetOccurredTime() {
 	e.timestamp = time.Now()
 }
 

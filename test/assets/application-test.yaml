@@ -1,4 +1,6 @@
 neve:
+  application:
+    name: Neve test application
   inject:
     disable: false
     workers: 1

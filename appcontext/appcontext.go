@@ -15,6 +15,9 @@ type ApplicationContext interface {
 	// 初始化context
 	Init(config fig.Properties) error
 
+	// 获得应用名称
+	GetApplicationName() string
+
 	// 注册对象
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
@@ -41,4 +44,10 @@ type ApplicationContext interface {
 	ApplicationEventPublisher
 
 	ApplicationEventHandler
+}
+
+type ApplicationContextAware interface {
+	// 装配ApplicationContext
+	// 在bean未被注入和初始化之前调用
+	SetApplicationContext(ctx ApplicationContext)
 }

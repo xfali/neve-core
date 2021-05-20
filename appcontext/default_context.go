@@ -13,7 +13,6 @@ import (
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/xlog"
-	"reflect"
 	"sync"
 	"sync/atomic"
 )
@@ -24,10 +23,6 @@ const (
 	statusInitialized
 )
 
-const (
-	defaultEventBufferSize = 4096
-)
-
 type Opt func(*defaultApplicationContext)
 
 type defaultApplicationContext struct {
@@ -35,42 +30,32 @@ type defaultApplicationContext struct {
 	logger    xlog.Logger
 	container bean.Container
 	injector  injector.Injector
+	eventProc ApplicationEventProcessor
 
 	ctxAwares    []ApplicationContextAware
 	ctxAwareLock sync.Mutex
 
-	listeners    []ApplicationEventListener
-	listenerLock sync.Mutex
-
 	processors     []processor.Processor
 	processorsLock sync.Mutex
 
+	appName       string
 	disableInject bool
 	curState      int32
-
-	eventBufSize int
-	eventChan    chan ApplicationEvent
-	stopChan     chan struct{}
 }
 
 func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 	ret := &defaultApplicationContext{
 		logger:    xlog.GetLogger(),
 		container: bean.NewContainer(),
+		eventProc: NewEventProcessor(),
 
-		curState:     statusNone,
-		eventBufSize: defaultEventBufferSize,
-		stopChan:     make(chan struct{}),
+		curState: statusNone,
 	}
 	ret.injector = injector.New(injector.OptSetLogger(ret.logger))
 
 	for _, opt := range opts {
 		opt(ret)
 	}
-
-	ret.eventChan = make(chan ApplicationEvent, ret.eventBufSize)
-
-	go ret.eventLoop()
 
 	return ret
 }
@@ -93,22 +78,32 @@ func OptSetInjector(injector injector.Injector) Opt {
 	}
 }
 
-// set event channel buffer size
-func OptSetEventBufferSize(size int) Opt {
+func OptSetEventProcessor(proc ApplicationEventProcessor) Opt {
 	return func(context *defaultApplicationContext) {
-		context.eventBufSize = size
+		context.eventProc = proc
 	}
 }
 
 func (ctx *defaultApplicationContext) Init(config fig.Properties) (err error) {
 	ctx.config = config
 	ctx.disableInject = ctx.config.Get("neve.inject.disable", "false") == "true"
-	return nil
+	ctx.appName = ctx.config.Get("neve.application.name", "Neve Application")
+	return ctx.eventProc.Start()
 }
 
-func (ctx *defaultApplicationContext) Close() (err error) {
-	close(ctx.stopChan)
-	return
+func (ctx *defaultApplicationContext) GetApplicationName() string {
+	return ctx.appName
+}
+
+func (ctx *defaultApplicationContext) Close() error {
+	err := ctx.eventProc.Close()
+	if err != nil {
+		return err
+	}
+	ctx.notifyStopped()
+	ctx.destroyBeans()
+	ctx.notifyClosed()
+	return nil
 }
 
 func (ctx *defaultApplicationContext) isInitializing() bool {
@@ -137,10 +132,7 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return err
 	}
 
-	l := ctx.classifyListenerInterface(o)
-	if l != nil {
-		ctx.addListener(l, true)
-	}
+	ctx.eventProc.AddListeners(o)
 
 	if v, ok := o.(ApplicationContextAware); ok {
 		ctx.addAware(v, true)
@@ -154,18 +146,6 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 	}
 
 	return nil
-}
-
-func (ctx *defaultApplicationContext) addListener(l ApplicationEventListener, withLock bool) {
-	if !withLock {
-		ctx.listeners = append(ctx.listeners, l)
-		return
-	}
-
-	ctx.listenerLock.Lock()
-	defer ctx.listenerLock.Unlock()
-
-	ctx.listeners = append(ctx.listeners, l)
 }
 
 func (ctx *defaultApplicationContext) addAware(aware ApplicationContextAware, withLock bool) {
@@ -208,52 +188,11 @@ func (ctx *defaultApplicationContext) AddProcessor(p processor.Processor) error 
 }
 
 func (ctx *defaultApplicationContext) AddListeners(listeners ...interface{}) {
-	for _, o := range listeners {
-		ctx.processListener(o)
-	}
-}
-
-func (ctx *defaultApplicationContext) processListener(o interface{}) {
-	l := ctx.classifyListenerInterface(o)
-	if l != nil {
-		ctx.addListener(l, true)
-		return
-	}
-
-	l, err := parseListener(o)
-	if err != nil {
-		//ctx.logger.Errorln(err)
-	} else if l != nil {
-		ctx.addListener(l, true)
-	}
-}
-
-func (ctx *defaultApplicationContext) classifyListenerInterface(o interface{}) ApplicationEventListener {
-	if l, ok := o.(ApplicationEventListener); ok {
-		return l
-	}
-
-	if c, ok := o.(ApplicationEventConsumer); ok {
-		l, err := parseListener(c.GetApplicationEventConsumer())
-		if err != nil {
-			ctx.logger.Errorln(err)
-			return nil
-		}
-		return l
-	}
-	return nil
+	ctx.eventProc.AddListeners(listeners...)
 }
 
 func (ctx *defaultApplicationContext) PublishEvent(e ApplicationEvent) error {
-	if e == nil {
-		return errors.New("event is nil. ")
-	}
-	select {
-	case ctx.eventChan <- e:
-		return nil
-	default:
-		return errors.New("event queue is full. ")
-	}
+	return ctx.eventProc.PublishEvent(e)
 }
 
 func (ctx *defaultApplicationContext) Start() error {
@@ -277,10 +216,7 @@ func (ctx *defaultApplicationContext) Start() error {
 			ctx.logger.Fatal("Cannot be here!")
 		}
 
-		e := &ContextStartedEvent{}
-		e.UpdateTime()
-		e.ctx = ctx
-		ctx.PublishEvent(e)
+		ctx.notifyStarted()
 		return nil
 	} else {
 		return fmt.Errorf("Application Context Status error, current: %d . ", ctx.curState)
@@ -328,15 +264,6 @@ func (ctx *defaultApplicationContext) notifyBeanSet() {
 	})
 }
 
-func (ctx *defaultApplicationContext) notifyEvent(e ApplicationEvent) {
-	ctx.listenerLock.Lock()
-	defer ctx.listenerLock.Unlock()
-
-	for _, v := range ctx.listeners {
-		v.OnApplicationEvent(e)
-	}
-}
-
 func (ctx *defaultApplicationContext) doProcess() {
 	ctx.processorsLock.Lock()
 	defer ctx.processorsLock.Unlock()
@@ -372,131 +299,23 @@ func (ctx *defaultApplicationContext) destroyBeans() {
 	})
 }
 
+func (ctx *defaultApplicationContext) notifyStarted() {
+	e := &ContextStartedEvent{}
+	e.ResetOccurredTime()
+	e.ctx = ctx
+	ctx.PublishEvent(e)
+}
+
 func (ctx *defaultApplicationContext) notifyClosed() {
 	e := &ContextClosedEvent{}
-	e.UpdateTime()
+	e.ResetOccurredTime()
 	e.ctx = ctx
-	ctx.notifyEvent(e)
+	ctx.eventProc.NotifyEvent(e)
 }
 
 func (ctx *defaultApplicationContext) notifyStopped() {
 	e := &ContextStoppedEvent{}
-	e.UpdateTime()
+	e.ResetOccurredTime()
 	e.ctx = ctx
-	ctx.notifyEvent(e)
-}
-
-func (ctx *defaultApplicationContext) eventLoop() {
-	defer ctx.notifyClosed()
-	defer ctx.destroyBeans()
-	for {
-		select {
-		case <-ctx.stopChan:
-			ctx.notifyStopped()
-			return
-		case e, ok := <-ctx.eventChan:
-			if ok {
-				ctx.notifyEvent(e)
-			}
-		}
-	}
-}
-
-var eventType = reflect.TypeOf((*ApplicationEvent)(nil)).Elem()
-
-type eventProcessor struct {
-	et reflect.Type
-	fv reflect.Value
-}
-
-func parseListener(o interface{}) (ApplicationEventListener, error) {
-	t := reflect.TypeOf(o)
-	if t.Kind() != reflect.Func {
-		return nil, errors.New("Param is not a function. ")
-	}
-
-	if t.NumIn() != 1 {
-		return nil, errors.New("Param is not match, expect func(ApplicationEvent). ")
-	}
-
-	et := t.In(0)
-	if !et.Implements(eventType) {
-		return nil, errors.New("Param is not match, function param must Implements ApplicationEvent. ")
-	}
-
-	return &eventProcessor{
-		et: et,
-		fv: reflect.ValueOf(o),
-	}, nil
-}
-
-func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
-	t := reflect.TypeOf(e)
-	//if t == ep.et {
-	//	ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
-	//}
-	if t.AssignableTo(ep.et) {
-		ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
-	}
-}
-
-type PayloadListener struct {
-	et reflect.Type
-	fv reflect.Value
-}
-
-// o:获得payload的consumer 类型func(Type)
-func NewPayloadListener(o interface{}) *PayloadListener {
-	ret := &PayloadListener{
-	}
-	err := ret.RefreshPayloadHandler(o)
-	if err != nil {
-		panic(err)
-	}
-	return ret
-}
-
-func (l *PayloadListener) RefreshPayloadHandler(o interface{}) error {
-	t := reflect.TypeOf(o)
-	if t.Kind() != reflect.Func {
-		return errors.New("Param is not a function. ")
-	}
-
-	if t.NumIn() != 1 {
-		return errors.New("Param is not match, expect func(ApplicationEvent). ")
-	}
-
-	et := t.In(0)
-
-	l.et = et
-	l.fv = reflect.ValueOf(o)
-
-	return nil
-}
-
-type PayloadApplicationEvent struct {
-	BaseApplicationEvent
-	payload interface{}
-}
-
-func NewPayloadApplicationEvent(payload interface{}) *PayloadApplicationEvent {
-	if payload == nil {
-		return nil
-	}
-	e := PayloadApplicationEvent{}
-	e.UpdateTime()
-	e.payload = payload
-	return &e
-}
-
-func (l *PayloadListener) OnApplicationEvent(e ApplicationEvent) {
-	if l.fv.IsValid() {
-		if pe, ok := e.(*PayloadApplicationEvent); ok {
-			payload := pe.payload
-			t := reflect.TypeOf(payload)
-			if t.AssignableTo(l.et) {
-				l.fv.Call([]reflect.Value{reflect.ValueOf(payload)})
-			}
-		}
-	}
+	ctx.eventProc.NotifyEvent(e)
 }

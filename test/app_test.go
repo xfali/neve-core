@@ -351,7 +351,7 @@ type customerEvent struct {
 
 func newCustomerEvent(payload string) *customerEvent {
 	ret := &customerEvent{}
-	ret.UpdateTime()
+	ret.ResetOccurredTime()
 	ret.payload = payload
 	return ret
 }
@@ -464,6 +464,34 @@ func testListener(app neve.Application, t *testing.T) {
 	l3 := &listener3{}
 	l3.t = t
 	err = app.RegisterBean(l3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go app.Run()
+}
+
+type aware struct {
+	t *testing.T
+}
+
+func (a *aware) SetApplicationContext(ctx appcontext.ApplicationContext) {
+	if ctx == nil {
+		a.t.Fatal("must not be nil")
+	}
+	a.t.Log(ctx.GetApplicationName())
+}
+
+func TestAware(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		testAware(app, t)
+		time.Sleep(2 * time.Second)
+	})
+}
+
+func testAware(app neve.Application, t *testing.T) {
+	err := app.RegisterBean(&aware{t: t})
 	if err != nil {
 		t.Fatal(err)
 	}
