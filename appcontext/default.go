@@ -137,9 +137,7 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return err
 	}
 
-	if v, ok := o.(ApplicationEventListener); ok {
-		ctx.addListener(v, true)
-	}
+	ctx.processListener(o)
 
 	if v, ok := o.(ApplicationContextAware); ok {
 		ctx.addAware(v, true)
@@ -208,13 +206,16 @@ func (ctx *defaultApplicationContext) AddProcessor(p processor.Processor) error 
 
 func (ctx *defaultApplicationContext) AddListeners(listeners ...interface{}) {
 	for _, o := range listeners {
-		l, err := parseListener(o)
-		if err != nil {
-			ctx.logger.Errorln(err)
-			continue
-		} else {
-			ctx.addListener(l, true)
-		}
+		ctx.processListener(o)
+	}
+}
+
+func (ctx *defaultApplicationContext) processListener(o interface{}) {
+	l, err := parseListener(o)
+	if err != nil {
+		//ctx.logger.Errorln(err)
+	} else if l != nil {
+		ctx.addListener(l, true)
 	}
 }
 
@@ -250,6 +251,11 @@ func (ctx *defaultApplicationContext) Start() error {
 		if !atomic.CompareAndSwapInt32(&ctx.curState, statusInitializing, statusInitialized) {
 			ctx.logger.Fatal("Cannot be here!")
 		}
+
+		e := &ContextStartedEvent{}
+		e.UpdateTime()
+		e.ctx = ctx
+		ctx.PublishEvent(e)
 		return nil
 	} else {
 		return fmt.Errorf("Application Context Status error, current: %d . ", ctx.curState)
@@ -302,7 +308,7 @@ func (ctx *defaultApplicationContext) notifyEvent(e ApplicationEvent) {
 	defer ctx.listenerLock.Unlock()
 
 	for _, v := range ctx.listeners {
-		v.OnEvent(e)
+		v.OnApplicationEvent(e)
 	}
 }
 
@@ -341,11 +347,27 @@ func (ctx *defaultApplicationContext) destroyBeans() {
 	})
 }
 
+func (ctx *defaultApplicationContext) notifyClosed() {
+	e := &ContextClosedEvent{}
+	e.UpdateTime()
+	e.ctx = ctx
+	ctx.notifyEvent(e)
+}
+
+func (ctx *defaultApplicationContext) notifyStopped() {
+	e := &ContextStoppedEvent{}
+	e.UpdateTime()
+	e.ctx = ctx
+	ctx.notifyEvent(e)
+}
+
 func (ctx *defaultApplicationContext) eventLoop() {
+	defer ctx.notifyClosed()
 	defer ctx.destroyBeans()
 	for {
 		select {
 		case <-ctx.stopChan:
+			ctx.notifyStopped()
 			return
 		case e, ok := <-ctx.eventChan:
 			if ok {
@@ -387,9 +409,12 @@ func parseListener(o interface{}) (ApplicationEventListener, error) {
 	}, nil
 }
 
-func (ep *eventProcessor) OnEvent(e ApplicationEvent) {
+func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
 	t := reflect.TypeOf(e)
-	if t == ep.et {
+	//if t == ep.et {
+	//	ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
+	//}
+	if t.AssignableTo(ep.et) {
 		ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
 	}
 }

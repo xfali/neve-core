@@ -11,7 +11,7 @@ import (
 
 type ApplicationEvent interface {
 	// 事件发生的时间
-	Timestamp() time.Time
+	OccurredTime() time.Time
 }
 
 type ApplicationContextAware interface {
@@ -32,7 +32,7 @@ type ApplicationEventHandler interface {
 type ApplicationEventListener interface {
 	// 默认事件监听器接口
 	// 监听器应尽快处理事件，耗时操作请使用协程
-	OnEvent(e ApplicationEvent)
+	OnApplicationEvent(e ApplicationEvent)
 }
 
 type BaseApplicationEvent struct {
@@ -43,7 +43,7 @@ func (e *BaseApplicationEvent) UpdateTime() {
 	e.timestamp = time.Now()
 }
 
-func (e *BaseApplicationEvent) Timestamp() time.Time {
+func (e *BaseApplicationEvent) OccurredTime() time.Time {
 	return e.timestamp
 }
 

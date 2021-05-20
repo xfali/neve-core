@@ -9,10 +9,12 @@ import (
 	"errors"
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core"
+	"github.com/xfali/neve-core/appcontext"
 	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
+	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"os"
 	"testing"
@@ -71,7 +73,7 @@ func (o *order1) BeanAfterSet() error {
 type order2 struct {
 	t *testing.T
 
-	s string
+	s  string
 	O1 *order1 `inject:""`
 }
 
@@ -89,7 +91,7 @@ func (o *order2) BeanAfterSet() error {
 }
 
 type order3 struct {
-	t *testing.T
+	t  *testing.T
 	O1 *order1 `inject:""`
 	O2 *order2 `inject:""`
 }
@@ -319,20 +321,81 @@ func testOrder(app neve.Application, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBean(&order2{t:t}, bean.SetOrder(2))
+	err = app.RegisterBean(&order2{t: t}, bean.SetOrder(2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBeanByName("c", &order3{t:t}, bean.SetOrder(3))
+	err = app.RegisterBeanByName("c", &order3{t: t}, bean.SetOrder(3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = app.RegisterBean(&order1{t:t}, bean.SetOrder(-1))
+	err = app.RegisterBean(&order1{t: t}, bean.SetOrder(-1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	go app.Run()
 	time.Sleep(2 * time.Second)
+}
+
+type listener struct {
+	t *testing.T
+}
+
+type customerEvent struct {
+	appcontext.BaseApplicationEvent
+
+	payload string
+}
+
+func newCustomerEvent(payload string) *customerEvent {
+	ret := &customerEvent{}
+	ret.UpdateTime()
+	ret.payload = payload
+	return ret
+}
+
+func (l *listener) Event(event appcontext.ApplicationEvent) {
+	l.t.Log(reflection.GetObjectName(event))
+	if e, ok := event.(*customerEvent); ok {
+		if e.payload != "hello world" {
+			l.t.Fatal("not match")
+		}
+		l.t.Log(e.payload)
+	}
+}
+
+func (l *listener) OnApplicationEvent(event appcontext.ApplicationEvent) {
+	l.t.Log(reflection.GetObjectName(event))
+	if e, ok := event.(*customerEvent); ok {
+		if e.payload != "hello world" {
+			l.t.Fatal("not match")
+		}
+		l.t.Log(e.payload)
+	}
+}
+
+func (l *listener) EventStarted(event *appcontext.ContextStartedEvent) {
+	l.t.Log("ContextStartedEvent:", event.OccurredTime())
+	event.GetContext().PublishEvent(newCustomerEvent("hello world"))
+}
+
+func (l *listener) EventStopped(event *appcontext.ContextStoppedEvent) {
+	l.t.Log("ContextStoppedEvent:", event.OccurredTime())
+}
+
+func TestListener(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		testListener(app, t)
+		time.Sleep(2 * time.Second)
+	})
+}
+
+func testListener(app neve.Application, t *testing.T) {
+	f := &listener{t: t}
+	app.AddListeners(f, f.Event, f.EventStarted, f.EventStopped)
+
+	go app.Run()
 }
