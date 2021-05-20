@@ -402,7 +402,7 @@ func (l *listener) payloadA(payload a) {
 }
 
 type listener2 struct {
-	appcontext.PayloadListener
+	appcontext.PayloadEventListener
 	t *testing.T
 }
 
@@ -444,11 +444,11 @@ func testListener(app neve.Application, t *testing.T) {
 		f.EventStarted,
 		f.EventStopped,
 	)
-	err := app.RegisterBean(appcontext.NewPayloadListener(f.payload))
+	err := app.RegisterBean(appcontext.NewPayloadEventListener(f.payload))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBeanByName("A", appcontext.NewPayloadListener(f.payloadA))
+	err = app.RegisterBeanByName("A", appcontext.NewPayloadEventListener(f.payloadA))
 	if err != nil {
 		t.Fatal(err)
 	}

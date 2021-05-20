@@ -25,6 +25,12 @@ type ApplicationEventListener interface {
 	OnApplicationEvent(e ApplicationEvent)
 }
 
+type ApplicationEventConsumer interface {
+	// 获得ApplicationEvent消费方法，类型func(ApplicationEvent)
+	// 方法应尽快处理事件，耗时操作请使用协程
+	GetApplicationEventConsumer() interface{}
+}
+
 type ApplicationEventHandler interface {
 	// 增加时间监听器
 	// 监听器应尽快处理事件，耗时操作请使用协程
@@ -44,12 +50,6 @@ type ApplicationEventProcessor interface {
 
 	// 停止处理
 	Close() error
-}
-
-type ApplicationEventConsumer interface {
-	// 获得ApplicationEvent消费方法，类型func(ApplicationEvent)
-	// 方法应尽快处理事件，耗时操作请使用协程
-	GetApplicationEventConsumer() interface{}
 }
 
 type BaseApplicationEvent struct {

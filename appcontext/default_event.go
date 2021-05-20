@@ -204,14 +204,14 @@ func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
 	}
 }
 
-type PayloadListener struct {
+type PayloadEventListener struct {
 	et reflect.Type
 	fv reflect.Value
 }
 
 // o:获得payload的consumer 类型func(Type)
-func NewPayloadListener(o interface{}) *PayloadListener {
-	ret := &PayloadListener{
+func NewPayloadEventListener(o interface{}) *PayloadEventListener {
+	ret := &PayloadEventListener{
 	}
 	err := ret.RefreshPayloadHandler(o)
 	if err != nil {
@@ -220,7 +220,7 @@ func NewPayloadListener(o interface{}) *PayloadListener {
 	return ret
 }
 
-func (l *PayloadListener) RefreshPayloadHandler(o interface{}) error {
+func (l *PayloadEventListener) RefreshPayloadHandler(o interface{}) error {
 	t := reflect.TypeOf(o)
 	if t.Kind() != reflect.Func {
 		return errors.New("Param is not a function. ")
@@ -253,7 +253,7 @@ func NewPayloadApplicationEvent(payload interface{}) *PayloadApplicationEvent {
 	return &e
 }
 
-func (l *PayloadListener) OnApplicationEvent(e ApplicationEvent) {
+func (l *PayloadEventListener) OnApplicationEvent(e ApplicationEvent) {
 	if l.fv.IsValid() {
 		if pe, ok := e.(*PayloadApplicationEvent); ok {
 			payload := pe.payload

@@ -141,8 +141,67 @@ type Disposable interface {
 * BeanDestroy (仅调用一次)：
 
   在Application即将退出时调用。
-  
-### 8. 多例
+
+### 8. 获得ApplicationContext
+实现SetApplicationContext(ctx ApplicationContext)方法，在bean注入之前即可获取ApplicationContext的引用
+```
+type aware struct {
+	t *testing.T
+}
+
+func (a *aware) SetApplicationContext(ctx appcontext.ApplicationContext) {
+	if ctx == nil {
+		a.t.Fatal("must not be nil")
+	}
+	a.t.Log(ctx.GetApplicationName())
+}
+```
+### 9. ApplicationEvent
+neve提供了事件处理框架，通过ApplicationContext的PublishEvent可以发布事件，同时可以使用多种方式注册事件监听器
+* 通过Application的AddListeners方法：
+```
+app.AddListeners(o)
+```
+该方法支持注册
+1. 实现ApplicationEventListener的对象
+2. 方法，该方法的参数为ApplicationEvent或实现ApplicationEvent的对象
+* 通过实现ApplicationEventConsumer接口注册消费事件的方法
+```
+type listener3 struct {
+	t *testing.T
+}
+
+func (l *listener3) GetApplicationEventConsumer() interface{} {
+	return l.handlerEvent
+}
+
+// 当事件为*customerEvent类型时自动匹配并调用该方法
+// customerEvent需实现ApplicationEvent接口
+func (l *listener3) handlerEvent(event *customerEvent) {
+	l.t.Log("listener3", event.payload)
+}
+```
+* PayloadEventListener
+
+step 1: 定义一个类型，包含一个获取payload的方法，如getPayload
+```
+func (l *listener) getPayload(payload a) {
+	if payload.Get() != "hello world2" {
+		l.t.Fatal("not match")
+	}
+	l.t.Log("listener", payload.Get())
+}
+```
+step 2: 注册PayloadEventListener
+```
+app.RegisterBean(appcontext.NewPayloadEventListener(l.getPayload))
+```
+step 3: 发布一个PayloadApplicationEvent，参数中的对象会被自动匹配并调用PayloadEventListener关联的方法
+```
+appContext.PublishEvent(appcontext.NewPayloadApplicationEvent(&aImpl{v: "hello world2"}))
+```
+
+### 10. 多例
 neve注册和注入默认为单例，可以通过注册func() TYPE函数的方式，选择返回单例或者多例。
 ```
 app.RegisterBean(func() a {
