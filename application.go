@@ -28,6 +28,8 @@ type Application interface {
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
 
+	AddListeners(listeners ...interface{})
+
 	// 启动应用容器
 	Run() error
 }
@@ -79,8 +81,15 @@ func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{},
 	return app.ctx.RegisterBeanByName(name, o, opts...)
 }
 
+func (app *FileConfigApplication) AddListeners(listeners ...interface{}) {
+	app.ctx.AddListeners(listeners...)
+}
+
 func (app *FileConfigApplication) Run() error {
-	app.ctx.NotifyListeners(appcontext.ApplicationEventInitialized)
+	err := app.ctx.Start()
+	if err != nil {
+		return err
+	}
 	return HandlerSignal(app.logger, app.ctx.Close)
 }
 
