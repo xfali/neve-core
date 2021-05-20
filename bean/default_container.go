@@ -14,13 +14,31 @@ import (
 )
 
 const (
-	defaultPoolSize = 128
-	defaultOrder    = 0
+	defaultPoolSize    = 128
+	defaultOrder       = 0
+	defaultEnableCache = true
 )
 
-func NewContainer() *defaultContainer {
-	return &defaultContainer{
-		objectPool: newPool(defaultPoolSize),
+type ContainerOpt func(*defaultContainer)
+
+func NewContainer(opts ...ContainerOpt) *defaultContainer {
+	ret := &defaultContainer{
+		enableCache: defaultEnableCache,
+	}
+	for _, opt := range opts {
+		opt(ret)
+	}
+
+	ret.objectPool = newPool(defaultPoolSize, ret.enableCache)
+	return ret
+}
+
+// 配置是否开启key缓存，用于提高scan的性能
+// true为开启，false为关闭
+// 默认开启
+func OptContainerEnableCache(flag bool) ContainerOpt {
+	return func(container *defaultContainer) {
+		container.enableCache = flag
 	}
 }
 
@@ -53,27 +71,47 @@ type pool struct {
 	l *skiplist.SkipList
 	m map[string]*elem
 
+	k     []string
+	cache bool
+	dirty bool
+
 	locker sync.Mutex
 }
 
-func newPool(initSize int) *pool {
-	return &pool{
+func newPool(initSize int, cacheKey bool) *pool {
+	ret := &pool{
 		m: make(map[string]*elem, initSize),
 		l: skiplist.New(skiplist.SetKeyCompareFunc(skiplist.CompareInt)),
 	}
+	if cacheKey {
+		ret.cache = cacheKey
+		ret.dirty = false
+		//ret.k = make([]string, 0, initSize)
+	}
+	return ret
 }
 
 func (p *pool) keys() []string {
 	p.locker.Lock()
 	defer p.locker.Unlock()
 
+	if p.cache && !p.dirty {
+		return p.k
+	}
+
 	if p.l.Len() == 0 {
 		return nil
 	}
+
 	ret := make([]string, 0, len(p.m))
 	for x := p.l.First(); x != nil; x = x.Next() {
 		ret = append(ret, x.Value().([]string)...)
 	}
+
+	p.k = ret
+	// mark dirty false
+	p.dirty = false
+
 	return ret
 }
 
@@ -92,6 +130,8 @@ func (p *pool) loadOrStore(name string, elem *elem) (*elem, bool) {
 		}
 		p.l.Set(elem.order, keys)
 		p.m[name] = elem
+		// mark dirty
+		p.dirty = true
 		return elem, false
 	}
 }
@@ -108,7 +148,8 @@ func (p *pool) load(name string) (*elem, bool) {
 }
 
 type defaultContainer struct {
-	objectPool *pool
+	enableCache bool
+	objectPool  *pool
 }
 
 func (c *defaultContainer) Register(o interface{}, opts ...RegisterOpt) error {
