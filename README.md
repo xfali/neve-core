@@ -158,21 +158,23 @@ func (a *aware) SetApplicationContext(ctx appcontext.ApplicationContext) {
 ```
 ### 9. ApplicationEvent
 neve提供了事件处理框架，通过ApplicationContext的PublishEvent可以发布事件，同时可以使用多种方式注册事件监听器
-* 通过Application的AddListeners方法：
+#### 9.1  通过Application的AddListeners方法：
 ```
 app.AddListeners(o)
 ```
 该方法支持注册
-1. 实现ApplicationEventListener的对象
-2. 方法，该方法的参数为ApplicationEvent或实现ApplicationEvent的对象
-* 通过实现ApplicationEventConsumer接口注册消费事件的方法
+* 实现ApplicationEventListener的对象
+* 方法，该方法的参数为ApplicationEvent或实现ApplicationEvent的对象
+
+#### 9.2 通过实现ApplicationEventConsumer接口注册消费事件的方法
 ```
 type listener3 struct {
 	t *testing.T
 }
 
-func (l *listener3) GetApplicationEventConsumer() interface{} {
-	return l.handlerEvent
+// 实现ApplicationEventConsumer接口
+func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegister) error{
+	return register.RegisterApplicationEventConsumer(l.handlerEvent)
 }
 
 // 当事件为*customerEvent类型时自动匹配并调用该方法
@@ -181,7 +183,7 @@ func (l *listener3) handlerEvent(event *customerEvent) {
 	l.t.Log("listener3", event.payload)
 }
 ```
-* PayloadEventListener
+#### 9.3 PayloadEventListener
 
 step 1: 定义一个类型，包含一个获取payload的方法，如getPayload
 ```

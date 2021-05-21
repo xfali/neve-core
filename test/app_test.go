@@ -14,7 +14,6 @@ import (
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
-	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"os"
 	"testing"
@@ -357,17 +356,17 @@ func newCustomerEvent(payload string) *customerEvent {
 }
 
 func (l *listener) Event(event appcontext.ApplicationEvent) {
-	l.t.Log(reflection.GetObjectName(event))
+//	l.t.Log(reflection.GetObjectName(event))
 	if e, ok := event.(*customerEvent); ok {
 		if e.payload != "hello world" {
 			l.t.Fatal("not match")
 		}
-		l.t.Log(e.payload)
+		l.t.Log("func event:", e.payload)
 	}
 }
 
 func (l *listener) OnApplicationEvent(event appcontext.ApplicationEvent) {
-	l.t.Log(reflection.GetObjectName(event))
+//	l.t.Log(reflection.GetObjectName(event))
 	if e, ok := event.(*customerEvent); ok {
 		if e.payload != "hello world" {
 			l.t.Fatal("not match")
@@ -417,8 +416,8 @@ type listener3 struct {
 	t *testing.T
 }
 
-func (l *listener3) GetApplicationEventConsumer() interface{} {
-	return l.handlerEvent
+func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegister) error{
+	return register.RegisterApplicationEventConsumer(l.handlerEvent)
 }
 
 func (l *listener3) handlerEvent(event *customerEvent) {

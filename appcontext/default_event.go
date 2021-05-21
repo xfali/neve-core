@@ -27,6 +27,8 @@ type defaultEventProcessor struct {
 	eventBufSize int
 	eventChan    chan ApplicationEvent
 
+	consumerListenerFac func() ApplicationEventConsumerListener
+
 	stopChan   chan struct{}
 	finishChan chan struct{}
 }
@@ -35,8 +37,9 @@ type EventProcessorOpt func(processor *defaultEventProcessor)
 
 func NewEventProcessor(opts ...EventProcessorOpt) *defaultEventProcessor {
 	ret := &defaultEventProcessor{
-		logger:       xlog.GetLogger(),
-		eventBufSize: defaultEventBufferSize,
+		logger:              xlog.GetLogger(),
+		eventBufSize:        defaultEventBufferSize,
+		consumerListenerFac: defaultConsumerListenerFac,
 	}
 
 	for _, opt := range opts {
@@ -55,6 +58,12 @@ func OptSetEventProcessorLogger(logger xlog.Logger) EventProcessorOpt {
 func OptSetEventBufferSize(size int) EventProcessorOpt {
 	return func(proc *defaultEventProcessor) {
 		proc.eventBufSize = size
+	}
+}
+
+func OptSetConsumerListenerFactory(fac func() ApplicationEventConsumerListener) EventProcessorOpt{
+	return func(processor *defaultEventProcessor) {
+		processor.consumerListenerFac = fac
 	}
 }
 
@@ -87,7 +96,7 @@ func (h *defaultEventProcessor) processListener(o interface{}) {
 		return
 	}
 
-	l, err := parseListener(o)
+	l, err := h.parseListener(o)
 	if err != nil {
 		//ctx.logger.Errorln(err)
 	} else if l != nil {
@@ -101,7 +110,8 @@ func (h *defaultEventProcessor) classifyListenerInterface(o interface{}) Applica
 	}
 
 	if c, ok := o.(ApplicationEventConsumer); ok {
-		l, err := parseListener(c.GetApplicationEventConsumer())
+		l := h.createConsumerListener()
+		err := c.RegisterConsumer(l)
 		if err != nil {
 			h.logger.Errorln(err)
 			return nil
@@ -168,64 +178,115 @@ func (h *defaultEventProcessor) NotifyEvent(e ApplicationEvent) error {
 	return nil
 }
 
-type eventProcessor struct {
-	et reflect.Type
-	fv reflect.Value
+func (h *defaultEventProcessor) createConsumerListener() ApplicationEventConsumerListener {
+	return h.consumerListenerFac()
 }
 
-func parseListener(o interface{}) (ApplicationEventListener, error) {
-	t := reflect.TypeOf(o)
-	if t.Kind() != reflect.Func {
-		return nil, errors.New("Param is not a function. ")
-	}
+type eventProcessor struct {
+	invokers []ConsumerInvoker
+}
 
-	if t.NumIn() != 1 {
-		return nil, errors.New("Param is not match, expect func(ApplicationEvent). ")
-	}
+func defaultConsumerListenerFac() ApplicationEventConsumerListener {
+	return &eventProcessor{}
+}
 
-	et := t.In(0)
-	if !et.Implements(eventType) {
-		return nil, errors.New("Param is not match, function param must Implements ApplicationEvent. ")
+func (h *defaultEventProcessor) parseListener(o interface{}) (ApplicationEventListener, error) {
+	l := h.createConsumerListener()
+	if err := l.RegisterApplicationEventConsumer(o); err != nil {
+		return nil, err
 	}
+	return l, nil
+}
 
-	return &eventProcessor{
-		et: et,
-		fv: reflect.ValueOf(o),
-	}, nil
+func (ep *eventProcessor) RegisterApplicationEventConsumer(consumer interface{}) error {
+	invoker := eventInvoker{}
+	if err := invoker.ResolveConsumer(consumer); err != nil {
+		return err
+	}
+	ep.invokers = append(ep.invokers, &invoker)
+	return nil
 }
 
 func (ep *eventProcessor) OnApplicationEvent(e ApplicationEvent) {
-	t := reflect.TypeOf(e)
-	//if t == ep.et {
-	//	ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
-	//}
-	if t.AssignableTo(ep.et) {
-		ep.fv.Call([]reflect.Value{reflect.ValueOf(e)})
+	for _, invoker := range ep.invokers {
+		invoker.Invoke(e)
 	}
 }
 
-type payloadInvoker struct {
+type ConsumerInvoker interface {
+	// 消费
+	Invoke(data interface{}) bool
+
+	// 检查consumer是否符合类型要求
+	ResolveConsumer(consumer interface{}) error
+}
+
+type consumerInvoker struct {
 	et reflect.Type
 	fv reflect.Value
 }
 
-func (invoker *payloadInvoker) Invoke(payload interface{}) bool {
-	t := reflect.TypeOf(payload)
+func (invoker *consumerInvoker) Invoke(data interface{}) bool {
+	t := reflect.TypeOf(data)
 	if t.AssignableTo(invoker.et) {
-		invoker.fv.Call([]reflect.Value{reflect.ValueOf(payload)})
+		invoker.fv.Call([]reflect.Value{reflect.ValueOf(data)})
 		return true
 	}
 	return false
 }
 
+type payloadInvoker struct {
+	consumerInvoker
+}
+
+func (invoker *payloadInvoker) ResolveConsumer(consumer interface{}) error {
+	t := reflect.TypeOf(consumer)
+	if t.Kind() != reflect.Func {
+		return errors.New("Param is not a function. ")
+	}
+
+	if t.NumIn() != 1 {
+		return errors.New("Param is not match, expect func(ApplicationEvent). ")
+	}
+
+	et := t.In(0)
+	invoker.et = et
+	invoker.fv = reflect.ValueOf(consumer)
+	return nil
+}
+
+type eventInvoker struct {
+	consumerInvoker
+}
+
+func (invoker *eventInvoker) ResolveConsumer(consumer interface{}) error {
+	t := reflect.TypeOf(consumer)
+	if t.Kind() != reflect.Func {
+		return errors.New("Param is not a function. ")
+	}
+
+	if t.NumIn() != 1 {
+		return errors.New("Param is not match, expect func(ApplicationEvent). ")
+	}
+
+	et := t.In(0)
+	if !et.Implements(eventType) {
+		return errors.New("Param is not match, function param must Implements ApplicationEvent. ")
+	}
+
+	invoker.et = et
+	invoker.fv = reflect.ValueOf(consumer)
+	return nil
+}
+
 type PayloadEventListener struct {
-	invokers []*payloadInvoker
+	invokers []ConsumerInvoker
 }
 
 // o:获得payload的consumer 类型func(Type)
 func NewPayloadEventListener(consumer ...interface{}) *PayloadEventListener {
 	ret := &PayloadEventListener{
-		invokers: make([]*payloadInvoker, 0, len(consumer)),
+		invokers: make([]ConsumerInvoker, 0, len(consumer)),
 	}
 	err := ret.RefreshPayloadHandler(consumer...)
 	if err != nil {
@@ -239,23 +300,18 @@ func (l *PayloadEventListener) RefreshPayloadHandler(consumer ...interface{}) er
 		return errors.New("payload callers is nil")
 	}
 	for _, o := range consumer {
-		t := reflect.TypeOf(o)
-		if t.Kind() != reflect.Func {
-			return errors.New("Param is not a function. ")
-		}
-
-		if t.NumIn() != 1 {
-			return errors.New("Param is not match, expect func(ApplicationEvent). ")
-		}
-
-		et := t.In(0)
-
-		l.invokers = append(l.invokers, &payloadInvoker{
-			et: et,
-			fv: reflect.ValueOf(o),
-		})
+		l.RegisterApplicationEventConsumer(o)
 	}
 
+	return nil
+}
+
+func (l *PayloadEventListener) RegisterApplicationEventConsumer(consumer interface{}) error {
+	invoker := payloadInvoker{}
+	if err := invoker.ResolveConsumer(consumer); err != nil {
+		return err
+	}
+	l.invokers = append(l.invokers, &invoker)
 	return nil
 }
 
