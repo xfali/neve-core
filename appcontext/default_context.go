@@ -88,6 +88,8 @@ func (ctx *defaultApplicationContext) Init(config fig.Properties) (err error) {
 	ctx.config = config
 	ctx.disableInject = ctx.config.Get("neve.inject.disable", "false") == "true"
 	ctx.appName = ctx.config.Get("neve.application.name", "Neve Application")
+	// Register ApplicationEventPublisher
+	ctx.container.Register(ctx.eventProc.(ApplicationEventPublisher))
 	return ctx.eventProc.Start()
 }
 

@@ -114,10 +114,10 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 		v.Set(o.Value())
 		return nil
 	} else {
-		//自动注入
+		// 自动注入
 		var matchValues []bean.Definition
 		c.Scan(func(key string, value bean.Definition) bool {
-			//指定名称注册的对象直接跳过，因为在container.Get未满足，所以认定不是用户想要注入的对象
+			// 指定名称注册的对象直接跳过，因为在container.Get未满足，所以认定不是用户想要注入的对象
 			if key != value.Name() {
 				return true
 			}

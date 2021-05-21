@@ -356,7 +356,7 @@ func newCustomerEvent(payload string) *customerEvent {
 }
 
 func (l *listener) Event(event appcontext.ApplicationEvent) {
-//	l.t.Log(reflection.GetObjectName(event))
+	//	l.t.Log(reflection.GetObjectName(event))
 	if e, ok := event.(*customerEvent); ok {
 		if e.payload != "hello world" {
 			l.t.Fatal("not match")
@@ -366,7 +366,7 @@ func (l *listener) Event(event appcontext.ApplicationEvent) {
 }
 
 func (l *listener) OnApplicationEvent(event appcontext.ApplicationEvent) {
-//	l.t.Log(reflection.GetObjectName(event))
+	//	l.t.Log(reflection.GetObjectName(event))
 	if e, ok := event.(*customerEvent); ok {
 		if e.payload != "hello world" {
 			l.t.Fatal("not match")
@@ -416,7 +416,7 @@ type listener3 struct {
 	t *testing.T
 }
 
-func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegister) error{
+func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegister) error {
 	return register.RegisterApplicationEventConsumer(l.handlerEvent)
 }
 
@@ -425,6 +425,20 @@ func (l *listener3) handlerEvent(event *customerEvent) {
 		l.t.Fatal("not match")
 	}
 	l.t.Log("listener3", event.payload)
+}
+
+type publisher struct {
+	t *testing.T
+
+	Publisher appcontext.ApplicationEventPublisher `inject:""`
+}
+
+func (l *publisher) BeanAfterSet() error {
+	if l.Publisher == nil {
+		l.t.Fatal("Publisher is nil")
+	}
+	l.t.Log("publisher publish  newCustomerEvent hello world ===================")
+	return l.Publisher.PublishEvent(newCustomerEvent("hello world"))
 }
 
 func TestListener(t *testing.T) {
@@ -468,6 +482,13 @@ func testListener(app neve.Application, t *testing.T) {
 	l3 := &listener3{}
 	l3.t = t
 	err = app.RegisterBean(l3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub := &publisher{}
+	pub.t = t
+	err = app.RegisterBean(pub)
 	if err != nil {
 		t.Fatal(err)
 	}

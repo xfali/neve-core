@@ -31,6 +31,7 @@ type defaultEventProcessor struct {
 
 	stopChan   chan struct{}
 	finishChan chan struct{}
+	closeOnce  sync.Once
 }
 
 type EventProcessorOpt func(processor *defaultEventProcessor)
@@ -61,16 +62,25 @@ func OptSetEventBufferSize(size int) EventProcessorOpt {
 	}
 }
 
-func OptSetConsumerListenerFactory(fac func() ApplicationEventConsumerListener) EventProcessorOpt{
+func OptSetConsumerListenerFactory(fac func() ApplicationEventConsumerListener) EventProcessorOpt {
 	return func(processor *defaultEventProcessor) {
 		processor.consumerListenerFac = fac
 	}
+}
+
+func (h *defaultEventProcessor) BeanAfterSet() error {
+	return h.Start()
+}
+
+func (h *defaultEventProcessor) BeanDestroy() error {
+	return h.Close()
 }
 
 func (h *defaultEventProcessor) Start() error {
 	h.eventChan = make(chan ApplicationEvent, h.eventBufSize)
 	h.stopChan = make(chan struct{})
 	h.finishChan = make(chan struct{})
+	h.closeOnce = sync.Once{}
 
 	go h.eventLoop()
 
@@ -122,9 +132,11 @@ func (h *defaultEventProcessor) classifyListenerInterface(o interface{}) Applica
 }
 
 func (h *defaultEventProcessor) Close() (err error) {
-	close(h.stopChan)
-	//wait for eventLoop exit
-	<-h.finishChan
+	h.closeOnce.Do(func() {
+		close(h.stopChan)
+		//wait for eventLoop exit
+		<-h.finishChan
+	})
 	return
 }
 
@@ -182,20 +194,20 @@ func (h *defaultEventProcessor) createConsumerListener() ApplicationEventConsume
 	return h.consumerListenerFac()
 }
 
-type eventProcessor struct {
-	invokers []ConsumerInvoker
-}
-
-func defaultConsumerListenerFac() ApplicationEventConsumerListener {
-	return &eventProcessor{}
-}
-
 func (h *defaultEventProcessor) parseListener(o interface{}) (ApplicationEventListener, error) {
 	l := h.createConsumerListener()
 	if err := l.RegisterApplicationEventConsumer(o); err != nil {
 		return nil, err
 	}
 	return l, nil
+}
+
+type eventProcessor struct {
+	invokers []ConsumerInvoker
+}
+
+func defaultConsumerListenerFac() ApplicationEventConsumerListener {
+	return &eventProcessor{}
 }
 
 func (ep *eventProcessor) RegisterApplicationEventConsumer(consumer interface{}) error {

@@ -90,7 +90,6 @@ type injectBeanB struct {
 1. 注入interface时：
 * 如注册时使用RegisterBeanByName方法，则inject的tag value必须与注册时的name完全匹配，否则无法注入。
 * 如注册时使用RegisterBean方法，则inject的tag value应为空，neve会自动匹配实现interface的对象进行注入。
-* 如注册时使用RegisterBean方法，inject的tag value不为空，neve首先也会进行名称匹配，如未匹配成功也会自动匹配实现interface的对象进行注入。
 * 如注册时使用RegisterBeanByName方法且inject的tag value为空，则不会注入该对象。
 
 ### 6. 处理器
@@ -157,16 +156,43 @@ func (a *aware) SetApplicationContext(ctx appcontext.ApplicationContext) {
 }
 ```
 ### 9. ApplicationEvent
-neve提供了事件处理框架，通过ApplicationContext的PublishEvent可以发布事件，同时可以使用多种方式注册事件监听器
-#### 9.1  通过Application的AddListeners方法：
+neve提供了事件处理框架，包含事件发布器及事件监听器。
+
+#### 9.1 ApplicationEventPublisher
+neve通过ApplicationEventPublisher发布事件，常用的事件发布方法有两种
+
+##### 9.1.1  ApplicationContext的PublishEvent
+获得ApplicationContext，通过获得ApplicationContext的PublishEvent方法发布事件
+```
+appCtx.PublishEvent(newCustomerEvent("hello world"))
+```
+
+##### 9.1.2  注入
+neve默认会把内置的事件发布器注册到bean容器中，可以通过注入的方式获得ApplicationEventPublisher：
+```
+type TestBean struct {
+	Publisher appcontext.ApplicationEventPublisher `inject:""`
+}
+
+// 发布事件
+testBean.Publisher.PublishEvent(newCustomerEvent("hello world"))
+```
+
+##### 9.2  ApplicationEventListener
+有如下多种方式注册事件监听器
+
+##### 9.2.1  通过Application / ApplicationContext的AddListeners方法：
+
 ```
 app.AddListeners(o)
+
+appCtx.AddListeners(o)
 ```
 该方法支持注册
 * 实现ApplicationEventListener的对象
 * 方法，该方法的参数为ApplicationEvent或实现ApplicationEvent的对象
 
-#### 9.2 通过实现ApplicationEventConsumer接口注册消费事件的方法
+##### 9.2.2 通过实现ApplicationEventConsumer接口注册消费事件的方法
 ```
 type listener3 struct {
 	t *testing.T
@@ -183,7 +209,7 @@ func (l *listener3) handlerEvent(event *customerEvent) {
 	l.t.Log("listener3", event.payload)
 }
 ```
-#### 9.3 PayloadEventListener
+##### 9.2.3 PayloadEventListener
 
 step 1: 定义一个类型，包含一个获取payload的方法，如getPayload
 ```
