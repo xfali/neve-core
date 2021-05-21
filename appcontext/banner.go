@@ -7,6 +7,7 @@ package appcontext
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/xfali/xlog"
 	"io"
 	"os"
@@ -17,11 +18,12 @@ const (
   .\'/.   .-----.-----.--.--.-----.
 ->- x -<- |     |  -__|  |  |  -__|
   '/.\'   |__|__|_____|\___/|_____|
-=================  (v0.1.1.RELEASE)
 `
+	neveBannerVersion = `===================================`
 )
 
-func printBanner(bannerPath string) {
+//=================  (v0.1.1.RELEASE)
+func printBanner(version string, bannerPath string) {
 	output := []byte(neveBanner)
 	if bannerPath != "" {
 		f, err := os.Open(bannerPath)
@@ -33,7 +35,18 @@ func printBanner(bannerPath string) {
 			}
 		}
 	}
-	selectWriter().Write(output)
+	w := selectWriter()
+	w.Write(output)
+	w.Write([]byte(versionString(version)))
+}
+
+func versionString(version string) string {
+	size := len(version)
+	bs := len(neveBannerVersion)
+	if size == 0 || size > bs - 3{
+		return neveBannerVersion
+	}
+	return fmt.Sprintf("%s (%s)\n", neveBannerVersion[:bs - size - 3], version)
 }
 
 func selectWriter() io.Writer {

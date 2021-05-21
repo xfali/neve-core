@@ -12,6 +12,7 @@ import (
 	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
+	"github.com/xfali/neve-core/version"
 	"github.com/xfali/xlog"
 	"strings"
 	"sync"
@@ -232,7 +233,7 @@ func (ctx *defaultApplicationContext) printBanner() {
 	mode := ctx.config.Get("neve.application.bannerMode", "")
 	mode = strings.ToLower(mode)
 	if mode != "off" && mode != "false" {
-		printBanner(path)
+		printBanner(version.NeveVersion, path)
 	}
 }
 
