@@ -1,6 +1,6 @@
 # neve-core
 
-neve-core是neve的核心组件，实现基于反射的依赖注入框架以及注册bean的生命周期管理。
+neve-core是neve的核心组件，实现基于反射的依赖注入框架以及注册bean的生命周期管理，同时提供一套事件处理框架。
 
 ## 安装
 ```
@@ -19,6 +19,8 @@ app := neve.NewFileConfigApplication("assets/application-test.yaml")
 在application-test.yaml中配置示例如下：
 ```
 neve:
+  application:
+    name: Neve test application
   inject:
     disable: false
     workers: 1
@@ -27,6 +29,7 @@ userdata:
   value: "this is a test"
   gopath: {{ env "GOPATH" }}
 ```
+* 【neve.application.name】应用名称
 * 【neve.inject.disable】是否关闭注入功能，默认false，即开启依赖注入
 * 【neve.inject.workers】并行注入的任务数，目前还未开放故默认为1
 * 【userdata】非内置配置属性，属于用户自定义的value，可自定义名称

@@ -1,6 +1,8 @@
 neve:
   application:
     name: Neve test application
+    banner: "assets/banner.txt"
+  # bannerMode: "off"
   inject:
     disable: false
     workers: 1

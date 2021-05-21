@@ -65,6 +65,8 @@ func NewApplication(prop fig.Properties, opts ...Opt) *FileConfigApplication {
 }
 
 func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplication {
+	// Disable fig's log
+	fig.SetLog(func(format string, o ...interface{}) {})
 	prop, err := fig.LoadYamlFile(configPath)
 	if err != nil {
 		xlog.Errorln("load config file failed: ", err)

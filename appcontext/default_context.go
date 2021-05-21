@@ -13,6 +13,7 @@ import (
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/xlog"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -198,6 +199,7 @@ func (ctx *defaultApplicationContext) PublishEvent(e ApplicationEvent) error {
 }
 
 func (ctx *defaultApplicationContext) Start() error {
+	ctx.printBanner()
 	// 第一次初始化，注入所有对象
 	if atomic.CompareAndSwapInt32(&ctx.curState, statusNone, statusInitializing) {
 		// ApplicationContextAware Set.
@@ -222,6 +224,15 @@ func (ctx *defaultApplicationContext) Start() error {
 		return nil
 	} else {
 		return fmt.Errorf("Application Context Status error, current: %d . ", ctx.curState)
+	}
+}
+
+func (ctx *defaultApplicationContext) printBanner() {
+	path := ctx.config.Get("neve.application.banner", "")
+	mode := ctx.config.Get("neve.application.bannerMode", "")
+	mode = strings.ToLower(mode)
+	if mode != "off" && mode != "false" {
+		printBanner(path)
 	}
 }
 
