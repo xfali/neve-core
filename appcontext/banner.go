@@ -22,8 +22,15 @@ const (
 	neveBannerVersion = `===================================`
 )
 
-//=================  (v0.1.1.RELEASE)
-func printBanner(version string, bannerPath string) {
+func printNeveInfo(version string, bannerPath string, banner bool) {
+	w := selectWriter()
+	if banner {
+		w.Write([]byte(bannerString(bannerPath)))
+	}
+	w.Write([]byte(versionString(version, banner)))
+}
+
+func bannerString(bannerPath string) string {
 	output := []byte(neveBanner)
 	if bannerPath != "" {
 		f, err := os.Open(bannerPath)
@@ -35,18 +42,20 @@ func printBanner(version string, bannerPath string) {
 			}
 		}
 	}
-	w := selectWriter()
-	w.Write(output)
-	w.Write([]byte(versionString(version)))
+	return string(output)
 }
 
-func versionString(version string) string {
-	size := len(version)
-	bs := len(neveBannerVersion)
-	if size == 0 || size > bs - 3{
-		return neveBannerVersion
+func versionString(version string, banner bool) string {
+	if banner {
+		size := len(version)
+		bs := len(neveBannerVersion)
+		if size == 0 || size > bs-3 {
+			return neveBannerVersion
+		}
+		return fmt.Sprintf("%s (%s)\n", neveBannerVersion[:bs-size-3], version)
+	} else {
+		return fmt.Sprintf("=== neve === (%s)\n", version)
 	}
-	return fmt.Sprintf("%s (%s)\n", neveBannerVersion[:bs - size - 3], version)
 }
 
 func selectWriter() io.Writer {

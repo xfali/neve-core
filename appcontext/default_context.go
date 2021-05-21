@@ -200,7 +200,7 @@ func (ctx *defaultApplicationContext) PublishEvent(e ApplicationEvent) error {
 }
 
 func (ctx *defaultApplicationContext) Start() error {
-	ctx.printBanner()
+	ctx.printCtxInfo()
 	// 第一次初始化，注入所有对象
 	if atomic.CompareAndSwapInt32(&ctx.curState, statusNone, statusInitializing) {
 		// ApplicationContextAware Set.
@@ -228,13 +228,11 @@ func (ctx *defaultApplicationContext) Start() error {
 	}
 }
 
-func (ctx *defaultApplicationContext) printBanner() {
+func (ctx *defaultApplicationContext) printCtxInfo() {
 	path := ctx.config.Get("neve.application.banner", "")
 	mode := ctx.config.Get("neve.application.bannerMode", "")
 	mode = strings.ToLower(mode)
-	if mode != "off" && mode != "false" {
-		printBanner(version.NeveVersion, path)
-	}
+	printNeveInfo(version.NeveVersion, path, mode != "off" && mode != "false")
 }
 
 func (ctx *defaultApplicationContext) notifyAware() {
