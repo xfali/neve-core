@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	neveBanner = `
-  .\'/.   .-----.-----.--.--.-----.
+	neveBanner =
+`  .\'/.   .-----.-----.--.--.-----.
 ->- x -<- |     |  -__|  |  |  -__|
   '/.\'   |__|__|_____|\___/|_____|
 `
@@ -24,10 +24,16 @@ const (
 
 func printNeveInfo(version string, bannerPath string, banner bool) {
 	w := selectWriter()
+	buf := bytes.NewBuffer(nil)
+	buf.Grow(len(neveBanner) + len(neveBannerVersion) + 2)
+	buf.WriteByte('\n')
 	if banner {
-		w.Write([]byte(bannerString(bannerPath)))
+		buf.WriteString(bannerString(bannerPath))
 	}
-	w.Write([]byte(versionString(version, banner)))
+	buf.WriteString(versionString(version, banner))
+	buf.WriteByte('\n')
+
+	w.Write(buf.Bytes())
 }
 
 func bannerString(bannerPath string) string {
@@ -38,6 +44,9 @@ func bannerString(bannerPath string) string {
 			buf := bytes.NewBuffer(nil)
 			_, err := io.Copy(buf, f)
 			if err == nil {
+				if buf.Bytes()[buf.Len()-1] != '\n' {
+					buf.WriteByte('\n')
+				}
 				output = buf.Bytes()
 			}
 		}
