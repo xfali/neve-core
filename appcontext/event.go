@@ -55,10 +55,10 @@ type ApplicationEventProcessor interface {
 	// 不同于PublishEvent，NotifyEvent在Processor Close之后仍然能向Listener发送事件。
 	NotifyEvent(e ApplicationEvent) error
 
-	// 启动处理器
+	// 启动处理器，如有初始化操作必须定义在该方法
 	Start() error
 
-	// 停止处理
+	// 停止处理，与Start方法对应，如有针对Start初始化的清理操作必须定义在该方法
 	Close() error
 }
 

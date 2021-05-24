@@ -351,3 +351,29 @@ func (l *PayloadEventListener) OnApplicationEvent(e ApplicationEvent) {
 		}
 	}
 }
+
+type dummyEventProc struct{}
+
+func NewDisableEventProcessor() *dummyEventProc {
+	return &dummyEventProc{}
+}
+
+func (p *dummyEventProc) NotifyEvent(e ApplicationEvent) error {
+	panic("Application event process: Disabled")
+}
+
+func (p *dummyEventProc) PublishEvent(e ApplicationEvent) error {
+	panic("Application event process: Disabled")
+}
+
+func (p *dummyEventProc) AddListeners(listeners ...interface{}) {
+	panic("Application event process: Disabled")
+}
+
+func (p *dummyEventProc) Start() error {
+	return nil
+}
+
+func (p *dummyEventProc) Close() error {
+	return nil
+}

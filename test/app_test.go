@@ -442,8 +442,15 @@ func (l *publisher) BeanAfterSet() error {
 }
 
 func TestListener(t *testing.T) {
-	t.Run("default", func(t *testing.T) {
+	t.Run("default enable", func(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml")
+		testListener(app, t)
+		time.Sleep(2 * time.Second)
+	})
+
+	t.Run("default disable", func(t *testing.T) {
+		app := neve.NewFileConfigApplication("assets/application-test.yaml",
+			neve.OptSetApplicationContext(appcontext.NewDefaultApplicationContext(appcontext.OptDisableEvent())))
 		testListener(app, t)
 		time.Sleep(2 * time.Second)
 	})

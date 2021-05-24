@@ -42,6 +42,7 @@ type defaultApplicationContext struct {
 
 	appName       string
 	disableInject bool
+	disableEvent  bool
 	curState      int32
 }
 
@@ -86,12 +87,29 @@ func OptSetEventProcessor(proc ApplicationEventProcessor) Opt {
 	}
 }
 
+func OptDisableEvent() Opt {
+	return func(context *defaultApplicationContext) {
+		context.disableEvent = true
+	}
+}
+
 func (ctx *defaultApplicationContext) Init(config fig.Properties) (err error) {
 	ctx.config = config
-	ctx.disableInject = ctx.config.Get("neve.inject.disable", "false") == "true"
 	ctx.appName = ctx.config.Get("neve.application.name", "Neve Application")
+	ctx.disableInject = ctx.config.Get("neve.inject.disable", "false") == "true"
+
+	event := ctx.config.Get("neve.application.eventMode", "on")
+	event = strings.ToLower(event)
+	if !ctx.disableEvent {
+		ctx.disableEvent = event == "off" || event == "false"
+	}
+
+	if ctx.disableEvent && ctx.eventProc != nil {
+		ctx.eventProc = NewDisableEventProcessor()
+	}
 	// Register ApplicationEventPublisher
 	ctx.container.Register(ctx.eventProc.(ApplicationEventPublisher))
+
 	return ctx.eventProc.Start()
 }
 
@@ -136,7 +154,9 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return err
 	}
 
-	ctx.eventProc.AddListeners(o)
+	if !ctx.disableEvent {
+		ctx.eventProc.AddListeners(o)
+	}
 
 	if v, ok := o.(ApplicationContextAware); ok {
 		ctx.addAware(v, true)
@@ -312,6 +332,9 @@ func (ctx *defaultApplicationContext) destroyBeans() {
 }
 
 func (ctx *defaultApplicationContext) notifyStarted() {
+	if ctx.disableEvent {
+		return
+	}
 	e := &ContextStartedEvent{}
 	e.ResetOccurredTime()
 	e.ctx = ctx
@@ -319,6 +342,9 @@ func (ctx *defaultApplicationContext) notifyStarted() {
 }
 
 func (ctx *defaultApplicationContext) notifyClosed() {
+	if ctx.disableEvent {
+		return
+	}
 	e := &ContextClosedEvent{}
 	e.ResetOccurredTime()
 	e.ctx = ctx
@@ -326,6 +352,9 @@ func (ctx *defaultApplicationContext) notifyClosed() {
 }
 
 func (ctx *defaultApplicationContext) notifyStopped() {
+	if ctx.disableEvent {
+		return
+	}
 	e := &ContextStoppedEvent{}
 	e.ResetOccurredTime()
 	e.ctx = ctx
