@@ -34,7 +34,7 @@ userdata:
 * 【neve.application.name】应用名称
 * 【neve.application.banner】banner文件路径
 * 【neve.application.bannerMode】如果设置为off则关闭显示banner
-* 【neve.application.event】如果设置为off则禁用内置事件处理框架
+* 【neve.application.eventMode】如果设置为off则禁用内置事件处理框架
 * 【neve.inject.disable】是否关闭注入功能，默认false，即开启依赖注入
 * 【neve.inject.workers】并行注入的任务数，目前还未开放故默认为1
 * 【userdata】非内置配置属性，属于用户自定义的value，可自定义名称
