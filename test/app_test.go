@@ -416,7 +416,7 @@ type listener3 struct {
 	t *testing.T
 }
 
-func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegister) error {
+func (l *listener3) RegisterConsumer(register appcontext.ApplicationEventConsumerRegistry) error {
 	return register.RegisterApplicationEventConsumer(l.handlerEvent)
 }
 

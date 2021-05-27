@@ -28,11 +28,12 @@ const (
 type Opt func(*defaultApplicationContext)
 
 type defaultApplicationContext struct {
-	config    fig.Properties
-	logger    xlog.Logger
-	container bean.Container
-	injector  injector.Injector
-	eventProc ApplicationEventProcessor
+	config      fig.Properties
+	logger      xlog.Logger
+	container   bean.Container
+	injector    injector.Injector
+	funcHandler InjectFunctionHandler
+	eventProc   ApplicationEventProcessor
 
 	ctxAwares    []ApplicationContextAware
 	ctxAwareLock sync.Mutex
@@ -55,10 +56,13 @@ func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 		curState: statusNone,
 	}
 	ret.injector = injector.New(injector.OptSetLogger(ret.logger))
+	ret.funcHandler = newDefaultInjectFunctionHandler(ret.logger)
 
 	for _, opt := range opts {
 		opt(ret)
 	}
+
+	ret.funcHandler.SetInjector(ret.injector)
 
 	return ret
 }
@@ -78,6 +82,12 @@ func OptSetLogger(logger xlog.Logger) Opt {
 func OptSetInjector(injector injector.Injector) Opt {
 	return func(context *defaultApplicationContext) {
 		context.injector = injector
+	}
+}
+
+func OptSetInjectFunctionHandler(handler InjectFunctionHandler) Opt {
+	return func(context *defaultApplicationContext) {
+		context.funcHandler = handler
 	}
 }
 
@@ -196,6 +206,13 @@ func (ctx *defaultApplicationContext) addProcessor(p processor.Processor, withLo
 	return p.Init(ctx.config, ctx.container)
 }
 
+func (ctx *defaultApplicationContext) classifyInjectFunction(o interface{}) error {
+	if v, ok := o.(InjectFunction); ok {
+		return v.RegisterFunction(ctx.funcHandler)
+	}
+	return nil
+}
+
 func (ctx *defaultApplicationContext) GetBean(name string) (interface{}, bool) {
 	return ctx.container.Get(name)
 }
@@ -236,6 +253,8 @@ func (ctx *defaultApplicationContext) Start() error {
 		ctx.notifyBeanSet()
 		// Processor process
 		ctx.doProcess()
+		// call and inject all functions
+		ctx.doFunctionInject()
 		// 初始化完成
 		if !atomic.CompareAndSwapInt32(&ctx.curState, statusInitializing, statusInitialized) {
 			ctx.logger.Fatal("Cannot be here!")
@@ -307,6 +326,10 @@ func (ctx *defaultApplicationContext) doProcess() {
 			ctx.logger.Fatalln(err)
 		}
 	}
+}
+
+func (ctx *defaultApplicationContext) doFunctionInject() {
+	ctx.funcHandler.InjectAllFunctions(ctx.container)
 }
 
 func (ctx *defaultApplicationContext) injectAll() {

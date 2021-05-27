@@ -21,9 +21,18 @@ const (
 var InjectTagName = defaultInjectTagName
 
 type Injector interface {
+	// 是否可以注入，是返回true，否则返回false
+	CanInject(o interface{}) bool
+
 	// 从对象容器中注入对象到参数o
 	// return: 当注入出错时抛出
 	Inject(container bean.Container, o interface{}) error
+
+	// 从对象容器中注入对象到value
+	CanInjectType(t reflect.Type) bool
+
+	// 从对象容器中注入对象到value
+	InjectValue(c bean.Container, name string, v reflect.Value) error
 }
 
 type Actuator func(c bean.Container, name string, v reflect.Value) error
@@ -52,6 +61,21 @@ func New(opts ...Opt) *defaultInjector {
 		opt(ret)
 	}
 	return ret
+}
+
+func (injector *defaultInjector) CanInject(o interface{}) bool {
+	v := reflect.ValueOf(o)
+	if v.Kind() == reflect.Interface {
+		return true
+	}
+	t := v.Type()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		if t.Kind() == reflect.Struct {
+			return true
+		}
+	}
+	return false
 }
 
 func (injector *defaultInjector) Inject(c bean.Container, o interface{}) error {
@@ -86,22 +110,33 @@ func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
 			}
-			if fieldValue.CanSet() {
-				actuate := injector.actuators[fieldType.Kind()]
-				if actuate == nil {
-					return errors.New("Cannot inject this kind: " + fieldType.Name())
-				}
-				err := actuate(c, tag, fieldValue)
-				if err != nil {
-					injector.logger.Errorf("Inject Field error: [%s: %s] %s\n ", reflection.GetTypeName(t), field.Name, err.Error())
-				}
-			} else {
-				injector.logger.Errorf("Inject failed: Field cannot SET [%s: %s]\n ", reflection.GetTypeName(t), field.Name)
+			err := injector.InjectValue(c, tag, fieldValue)
+			if err != nil {
+				injector.logger.Errorf("Inject failed: Field [%s: %s] error: %s\n ",
+					reflection.GetTypeName(t), field.Name, err.Error())
 			}
 		}
 	}
 
 	return nil
+}
+
+func (injector *defaultInjector) CanInjectType(t reflect.Type) bool {
+	actuate := injector.actuators[t.Kind()]
+	return actuate != nil
+}
+
+func (injector *defaultInjector) InjectValue(c bean.Container, name string, v reflect.Value) error {
+	t := v.Type()
+	if v.CanSet() {
+		actuate := injector.actuators[t.Kind()]
+		if actuate == nil {
+			return errors.New("Cannot inject this kind: " + t.Name())
+		}
+		return actuate(c, name, v)
+	} else {
+		return errors.New("Inject Failed: Value cannot set. ")
+	}
 }
 
 func (injector *defaultInjector) injectInterface(c bean.Container, name string, v reflect.Value) error {

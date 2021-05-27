@@ -25,20 +25,20 @@ type ApplicationEventListener interface {
 	OnApplicationEvent(e ApplicationEvent)
 }
 
-type ApplicationEventConsumerRegister interface {
+type ApplicationEventConsumerRegistry interface {
 	// consumer: ApplicationEvent消费方法，类型func(ApplicationEvent)
 	RegisterApplicationEventConsumer(consumer interface{}) error
 }
 
 type ApplicationEventConsumerListener interface {
 	ApplicationEventListener
-	ApplicationEventConsumerRegister
+	ApplicationEventConsumerRegistry
 }
 
 type ApplicationEventConsumer interface {
 	// 获得ApplicationEvent消费方法，类型func(ApplicationEvent)
 	// 方法应尽快处理事件，耗时操作请使用协程
-	RegisterConsumer(register ApplicationEventConsumerRegister) error
+	RegisterConsumer(registry ApplicationEventConsumerRegistry) error
 }
 
 type ApplicationEventHandler interface {
