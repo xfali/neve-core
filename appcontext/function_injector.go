@@ -25,7 +25,7 @@ func (invoker *defaultInjectInvoker) Invoke(injector injector.Injector, containe
 	values := make([]reflect.Value, len(invoker.types))
 	haveName := len(invoker.names) > 0
 	for i, t := range invoker.types {
-		o := reflect.New(t)
+		o := reflect.New(t).Elem()
 		name := ""
 		if haveName {
 			name = invoker.names[i]

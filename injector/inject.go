@@ -128,6 +128,9 @@ func (injector *defaultInjector) CanInjectType(t reflect.Type) bool {
 
 func (injector *defaultInjector) InjectValue(c bean.Container, name string, v reflect.Value) error {
 	t := v.Type()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 	if v.CanSet() {
 		actuate := injector.actuators[t.Kind()]
 		if actuate == nil {

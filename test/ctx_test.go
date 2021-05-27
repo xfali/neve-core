@@ -46,5 +46,3 @@ func TestContext2(t *testing.T) {
 	}()
 	app.Run()
 }
-
-
