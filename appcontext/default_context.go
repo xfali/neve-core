@@ -259,12 +259,13 @@ func (ctx *defaultApplicationContext) Start() error {
 		}
 		// Processor classify
 		ctx.classifyBean()
+		// call and inject all functions
+		ctx.doFunctionInject()
 		// Notify BeanAfterSet
 		ctx.notifyBeanSet()
 		// Processor process
 		ctx.doProcess()
-		// call and inject all functions
-		ctx.doFunctionInject()
+
 		// 初始化完成
 		if !atomic.CompareAndSwapInt32(&ctx.curState, statusInitializing, statusInitialized) {
 			ctx.logger.Fatal("Cannot be here!")

@@ -117,8 +117,8 @@ step 3: 注册该实例
 app.RegisterBean(&funcBean{})
 ```
 neve会自动检测并将对象通过调用f.inject方法进行注入。
-* 方法的参数注入规则同tag注入的注入规则
-* 方法注入的调用在所有bean完成初始化之后
+* 方法的参数注入规则同tag注入的注入规则；
+* 方法注入的调用在所有bean完成初始化之后，在调用BeanAfterSet之前。
 
 ### 5. 注意事项
 1. 注入struct Pointer时，名称必须完全匹配：

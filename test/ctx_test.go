@@ -51,6 +51,15 @@ func TestContext2(t *testing.T) {
 
 type funcBean struct {
 	t *testing.T
+	a a
+}
+
+func (f *funcBean) BeanAfterSet() error {
+	if f.a == nil {
+		f.t.Fatal("a is nil")
+	}
+	f.t.Log("BeanAfterSet: ", f.a.Get())
+	return nil
 }
 
 func (f *funcBean) RegisterFunction(registry appcontext.InjectFunctionRegistry) error {
@@ -83,6 +92,7 @@ func (f *funcBean) inject(as []a, a *aImpl, b *bImpl) {
 	if a == nil {
 		f.t.Fatal("a is nil")
 	}
+	f.a = a
 	if a.Get() != "0" {
 		xlog.Fatalln("expect: 0 but get: ", a.Get())
 	} else {
@@ -117,6 +127,7 @@ func (f *funcBean) inject2(as []a, a a, b *bImpl) {
 	if a == nil {
 		f.t.Fatal("a is nil")
 	}
+	f.a = a
 	if a.Get() != "x" {
 		xlog.Fatalln("expect: x but get: ", a.Get())
 	} else {
