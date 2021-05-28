@@ -136,7 +136,9 @@ func (h *defaultEventProcessor) Close() (err error) {
 		close(h.stopChan)
 		//wait for eventLoop exit
 		<-h.finishChan
+		h.logger.Infoln("Event Processor closed.")
 	})
+
 	return
 }
 
@@ -150,7 +152,14 @@ func (h *defaultEventProcessor) notifyEvent(e ApplicationEvent) {
 }
 
 func (h *defaultEventProcessor) eventLoop() {
-	defer close(h.finishChan)
+	defer func() {
+		select {
+		case <-h.finishChan:
+			return
+		default:
+			close(h.finishChan)
+		}
+	}()
 	for {
 		select {
 		case <-h.stopChan:

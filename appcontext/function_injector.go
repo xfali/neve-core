@@ -61,14 +61,11 @@ func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector,
 	}
 
 	for i := 0; i < s; i++ {
-		t := t.In(i)
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
+		tt := t.In(i)
+		if !injector.CanInjectType(tt) {
+			return fmt.Errorf("Cannot Inject Type : %s . ", reflection.GetTypeName(tt))
 		}
-		if !injector.CanInjectType(t) {
-			return fmt.Errorf("Cannot Inject Type : %s . ", reflection.GetTypeName(t))
-		}
-		invoker.types = append(invoker.types, t)
+		invoker.types = append(invoker.types, tt)
 	}
 	invoker.fv = reflect.ValueOf(function)
 	return nil

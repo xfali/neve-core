@@ -45,6 +45,8 @@ type defaultApplicationContext struct {
 	disableInject bool
 	disableEvent  bool
 	curState      int32
+
+	closeOnce sync.Once
 }
 
 func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
@@ -127,14 +129,17 @@ func (ctx *defaultApplicationContext) GetApplicationName() string {
 	return ctx.appName
 }
 
-func (ctx *defaultApplicationContext) Close() error {
-	err := ctx.eventProc.Close()
-	if err != nil {
-		return err
-	}
-	ctx.notifyStopped()
-	ctx.destroyBeans()
-	ctx.notifyClosed()
+func (ctx *defaultApplicationContext) Close() (err error) {
+	ctx.closeOnce.Do(func() {
+		err = ctx.eventProc.Close()
+		if err != nil {
+			ctx.logger.Errorln(err)
+		}
+		ctx.notifyStopped()
+		ctx.destroyBeans()
+		ctx.notifyClosed()
+	})
+
 	return nil
 }
 
@@ -166,6 +171,11 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 
 	if !ctx.disableEvent {
 		ctx.eventProc.AddListeners(o)
+	}
+
+	err = ctx.classifyInjectFunction(o)
+	if err != nil {
+		return err
 	}
 
 	if v, ok := o.(ApplicationContextAware); ok {

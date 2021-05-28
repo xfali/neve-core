@@ -152,7 +152,7 @@ func TestInjectStruct(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
 		c := bean.NewContainer()
 		c.Register(&aImpl{})
-		c.RegisterByName("b", &bImpl{})
+		c.RegisterByName("b", &bImpl{i:3})
 		i := injector.New()
 
 		d := dest2{}
@@ -164,7 +164,7 @@ func TestInjectStruct(t *testing.T) {
 		if d.A.Get() != 1 {
 			t.Fatal("inject A failed")
 		}
-		if d.B.Get() != 2 {
+		if d.B.Get() != 3 {
 			t.Fatal("inject B failed")
 		}
 	})
@@ -172,7 +172,7 @@ func TestInjectStruct(t *testing.T) {
 	t.Run("inject twice", func(t *testing.T) {
 		c := bean.NewContainer()
 		c.Register(&aImpl{})
-		c.RegisterByName("b", &bImpl{})
+		c.RegisterByName("b",  &bImpl{i:3})
 		i := injector.New()
 
 		d := dest2{}
@@ -184,7 +184,7 @@ func TestInjectStruct(t *testing.T) {
 		if d.A.Get() != 1 {
 			t.Fatal("inject A failed")
 		}
-		if d.B.Get() != 2 {
+		if d.B.Get() != 3 {
 			t.Fatal("inject B failed")
 		}
 
@@ -196,7 +196,7 @@ func TestInjectStruct(t *testing.T) {
 		if d.A.Get() != 1 {
 			t.Fatal("inject A failed")
 		}
-		if d.B.Get() != 2 {
+		if d.B.Get() != 3 {
 			t.Fatal("inject B failed")
 		}
 	})

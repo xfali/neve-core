@@ -7,6 +7,7 @@ package injector
 
 import (
 	"errors"
+	"fmt"
 	"github.com/xfali/neve-core/bean"
 	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
@@ -122,6 +123,9 @@ func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.
 }
 
 func (injector *defaultInjector) CanInjectType(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 	actuate := injector.actuators[t.Kind()]
 	return actuate != nil
 }
@@ -263,7 +267,9 @@ func (injector *defaultInjector) injectStruct(c bean.Container, name string, v r
 			v.Set(ov)
 		} else {
 			// 只允许注入指针类型
-			injector.logger.Errorf("Inject struct: [%s] failed: field must be pointer. ", reflection.GetTypeName(vt))
+			err := fmt.Errorf("Inject struct: [%s] failed: value must be pointer. ", reflection.GetTypeName(vt))
+			injector.logger.Errorln(err)
+			return err
 			//v.Set(ov.Elem())
 		}
 		return nil
