@@ -12,12 +12,9 @@ import (
 
 type InjectFunctionRegistry interface {
 	// function: 目标注入的方法，类型func(Type1, Type2...TypeN)
-	RegisterInjectFunction(function interface{}) error
-
-	// function: 目标注入的方法，类型func(Type1, Type2...TypeN)
-	// 可以通过参数names传递指定注入的对象名称。规则与tag:inject注入一致。如选择自动注入传递""
+	// 可以通过参数names传递指定注入的对象名称。规则与tag:inject注入一致。如某参数选择自动注入则传字串""
 	// 注意： names的长度要与functions的参数个数完全一致。
-	RegisterInjectFunctionWithNames(names []string, function interface{}) error
+	RegisterInjectFunction(function interface{}, names ...string) error
 }
 
 // 如需要通过方法注入，则可实现该接口来注册方法，系统初始化会自动调用该方法进行注入。

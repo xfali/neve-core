@@ -91,32 +91,39 @@ type injectBeanB struct {
 }
 ```
 #### 4.3 使用方法注入
-neve除了tag注入，也支持方法注入。
+neve除了tag注入之外也支持方法注入。相较于tag注入，方法注入可以避免field公开。
 
-step 1: 定义一个类型，以及注入的目标方法
+step 1: 定义一个类型,类型实现appcontext.InjectFunction接口(即包含方法RegisterFunction(registry appcontext.InjectFunctionRegistry) error)，
+在接口中将注入的目标方法注册到InjectFunctionRegistry中
 ```
 type funcBean struct {
+    as []a
+    a *aImpl
+    b *bImpl
 }
 
-func (f *funcBean) inject(as []a, a *aImpl, b *bImpl) {
-	// do something...
-}
-```
-step 2: 类型实现appcontext.InjectFunction接口，在接口中将注入的目标方法注册到InjectFunctionRegistry中
-```
+// 实现接口
 func (f *funcBean) RegisterFunction(registry appcontext.InjectFunctionRegistry) error {
-	return registry.RegisterInjectFunction(f.inject)
+	return registry.RegisterInjectFunction(func(as []a, a *aImpl, b *bImpl) {
+	    f.as = as
+	    f.a = a
+	    f.b = b
+	})
 }
 ```
-指定名称注入可以在注册注入方法时使用RegisterInjectFunctionWithNames方式，指定注入的名称:
+指定名称注入可以在注册注入方法时指定注入的名称:
 ```
-registry.RegisterInjectFunctionWithNames([]string{"", "a", ""}, f.inject2)
+registry.RegisterInjectFunction(func(as []a, a a, b *bImpl) {
+	    f.as = as
+	    f.a = a
+	    f.b = b
+	}, "", "a", "")
 ```
-step 3: 注册该实例
+step 2: 注册该实例
 ```
 app.RegisterBean(&funcBean{})
 ```
-neve会自动检测并将对象通过调用f.inject方法进行注入。
+neve会自动检测并将对象通过调用注册的注入方法进行注入。
 * 方法的参数注入规则同tag注入的注入规则；
 * 方法注入的调用在所有bean完成初始化之后，在调用BeanAfterSet之前。
 

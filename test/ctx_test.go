@@ -67,7 +67,9 @@ func (f *funcBean) RegisterFunction(registry appcontext.InjectFunctionRegistry) 
 	if err != nil {
 		return err
 	}
-	err = registry.RegisterInjectFunctionWithNames([]string{"", "a", ""}, f.inject2)
+	err = registry.RegisterInjectFunction(func(as []a, a a, b *bImpl) {
+		f.testInject(as, a, b)
+	}, "", "a", "")
 	if err != nil {
 		return err
 	}
@@ -109,19 +111,19 @@ func (f *funcBean) inject(as []a, a *aImpl, b *bImpl) {
 	}
 }
 
-func (f *funcBean) inject2(as []a, a a, b *bImpl) {
+func (f *funcBean) testInject(as []a, a a, b *bImpl) {
 	if len(as) != 3 {
 		f.t.Fatal("as is: ", len(as))
 	}
 	if as[0].Get() != "0" {
 		f.t.Fatal("expect: 0 but get: ", as[0].Get())
 	} else {
-		f.t.Log("inject func: as[0]: ", as[0].Get())
+		f.t.Log("testInject inject func: as[0]: ", as[0].Get())
 	}
 	if as[1].Get() != "this is a test" {
 		f.t.Fatal("expect: 'this is a test' but get: ", as[1].Get())
 	} else {
-		f.t.Log("inject func: as[1]: ", as[1].Get())
+		f.t.Log("testInject inject func: as[1]: ", as[1].Get())
 	}
 
 	if a == nil {
@@ -131,7 +133,7 @@ func (f *funcBean) inject2(as []a, a a, b *bImpl) {
 	if a.Get() != "x" {
 		xlog.Fatalln("expect: x but get: ", a.Get())
 	} else {
-		f.t.Log("inject func: a: ", a.Get())
+		f.t.Log("testInject inject func: a: ", a.Get())
 	}
 
 	if b == nil {
@@ -140,7 +142,7 @@ func (f *funcBean) inject2(as []a, a a, b *bImpl) {
 	if b.Get() != "this is a test" {
 		f.t.Fatal("expect: 'this is a test' but get: ", b.Get())
 	} else {
-		f.t.Log("inject func: b: ", b.Get())
+		f.t.Log("testInject inject func: b: ", b.Get())
 	}
 }
 

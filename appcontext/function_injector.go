@@ -13,6 +13,7 @@ import (
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
+	"sync"
 )
 
 type defaultInjectInvoker struct {
@@ -54,10 +55,9 @@ func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector,
 
 	if len(names) > 0 {
 		if len(names) != s {
-			return errors.New("Names not match function's params. ")
-		} else {
-			invoker.names = names
+			//return errors.New("Names not match function's params. ")
 		}
+		invoker.names = formatNames(names, s)
 	}
 
 	for i := 0; i < s; i++ {
@@ -71,12 +71,27 @@ func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector,
 	return nil
 }
 
+func formatNames(names []string, size int) []string {
+	srcSize := len(names)
+	if srcSize == size {
+		return names
+	} else if srcSize > size {
+		return names[:size]
+	} else {
+		for i := srcSize; i < size; i++ {
+			names = append(names, "")
+		}
+		return names
+	}
+}
+
 type defaultInjectFunctionHandler struct {
 	logger   xlog.Logger
 	injector injector.Injector
 	creator  func() FunctionInjectInvoker
 
 	invokers []FunctionInjectInvoker
+	locker   sync.Mutex
 }
 
 func newDefaultInjectFunctionHandler(logger xlog.Logger) *defaultInjectFunctionHandler {
@@ -93,6 +108,10 @@ func (fi *defaultInjectFunctionHandler) SetInjector(injector injector.Injector) 
 
 func (fi *defaultInjectFunctionHandler) InjectAllFunctions(container bean.Container) error {
 	var last error
+
+	fi.locker.Lock()
+	defer fi.locker.Unlock()
+
 	for _, invoker := range fi.invokers {
 		err := invoker.Invoke(fi.injector, container)
 		if err != nil {
@@ -107,15 +126,18 @@ func create() FunctionInjectInvoker {
 	return &defaultInjectInvoker{}
 }
 
-func (fi *defaultInjectFunctionHandler) RegisterInjectFunction(function interface{}) error {
-	return fi.RegisterInjectFunctionWithNames(nil, function)
-}
-
-func (fi *defaultInjectFunctionHandler) RegisterInjectFunctionWithNames(names []string, function interface{}) error {
+func (fi *defaultInjectFunctionHandler) RegisterInjectFunction(function interface{}, names ...string) error {
 	invoker := fi.creator()
-	if err := invoker.ResolveFunction(fi.injector, names, function); err != nil {
+	if err := invoker.ResolveFunction(fi.injector, names[:], function); err != nil {
 		return err
 	}
-	fi.invokers = append(fi.invokers, invoker)
+	fi.addInvoker(invoker)
 	return nil
+}
+
+func (fi *defaultInjectFunctionHandler) addInvoker(invoker FunctionInjectInvoker) {
+	fi.locker.Lock()
+	defer fi.locker.Unlock()
+
+	fi.invokers = append(fi.invokers, invoker)
 }
