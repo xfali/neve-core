@@ -61,7 +61,13 @@ app.RegisterBean(NewBean(), bean.SetOrder(2))
 ```
 
 ### 4. 注入
-#### 4.1 使用tag：inject
+#### 4.1注入类型支持：
+* interface（接口）：neve会自动选择实现对象注入或按指定名称注入
+* struct Pointer（结构体指针）：neve选择具体注册的结构体对象进行注入
+* slice：neve可按名称注入slice，也可以自动查询所有适配的对象添加到slice中
+* map：neve可按名称注入map，也可以自动查询所有适配的对象添加到map中
+
+#### 4.2 使用tag：inject
 注意注入的field首字母需大写（Public）
 * 当inject的value为空时自动选择注入
 * 当inject的value不为空时则按名称注入
@@ -73,13 +79,7 @@ type injectBean struct {
 	Bf a      `inject:"c"`
 }
 ```
-#### 4.2 注入类型支持：
-* interface（接口）：neve会自动选择实现对象注入或按指定名称注入
-* struct Pointer（结构体指针）：neve选择具体注册的结构体对象进行注入
-* slice：neve可按名称注入slice，也可以自动查询所有适配的对象添加到slice中
-* map：neve可按名称注入map，也可以自动查询所有适配的对象添加到map中
-
-#### 4.3 自定义tag：
+可自定义tag，方法如下：
 ```
 app := neve.NewFileConfigApplication("assets/application-test.yaml",
 			neve.OptSetInjectTagName("Autowired"))
@@ -90,6 +90,35 @@ type injectBeanB struct {
 	Bf a      `Autowired:"c"`
 }
 ```
+#### 4.3 使用方法注入
+neve除了tag注入，也支持方法注入。
+
+step 1: 定义一个类型，以及注入的目标方法
+```
+type funcBean struct {
+}
+
+func (f *funcBean) inject(as []a, a *aImpl, b *bImpl) {
+	// do something...
+}
+```
+step 2: 类型实现appcontext.InjectFunction接口，在接口中将注入的目标方法注册到InjectFunctionRegistry中
+```
+func (f *funcBean) RegisterFunction(registry appcontext.InjectFunctionRegistry) error {
+	return registry.RegisterInjectFunction(f.inject)
+}
+```
+指定名称注入可以在注册注入方法时使用RegisterInjectFunctionWithNames方式，指定注入的名称:
+```
+registry.RegisterInjectFunctionWithNames([]string{"", "a", ""}, f.inject2)
+```
+step 3: 注册该实例
+```
+app.RegisterBean(&funcBean{})
+```
+neve会自动检测并将对象通过调用f.inject方法进行注入。
+* 方法的参数注入规则同tag注入的注入规则
+* 方法注入的调用在所有bean完成初始化之后
 
 ### 5. 注意事项
 1. 注入struct Pointer时，名称必须完全匹配：
