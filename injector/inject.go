@@ -23,16 +23,23 @@ var InjectTagName = defaultInjectTagName
 
 type Injector interface {
 	// 是否可以注入，是返回true，否则返回false
+	// 该方法为了保证效率可能仅为初步类型筛查:
+	//    返回false说明该对象无法注入。
+	//    返回true说明该对象可能注入成功，但以Inject实际注入时的返回为准。
 	CanInject(o interface{}) bool
 
 	// 从对象容器中注入对象到参数o
-	// return: 当注入出错时抛出
+	// return: 成功返回nil，否则返回错误原因
 	Inject(container bean.Container, o interface{}) error
 
-	// 从对象容器中注入对象到value
+	// 判断目标类型是否可以注入
+	// 该方法为了保证效率可能仅为初步类型筛查:
+	//    返回false说明该类型无法注入。
+	//    返回true说明该类型可能注入成功，但以InjectValue实际注入时的返回为准。
 	CanInjectType(t reflect.Type) bool
 
 	// 从对象容器中注入对象到value
+	// return: 成功返回nil，否则返回错误原因
 	InjectValue(c bean.Container, name string, v reflect.Value) error
 }
 
