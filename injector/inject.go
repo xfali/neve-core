@@ -171,7 +171,7 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 				return true
 			}
 			ot := value.Type()
-			if ot.Implements(vt) {
+			if ot.AssignableTo(vt) {
 				matchValues = append(matchValues, value)
 				if len(matchValues) > 1 {
 					panic("Auto Inject bean found more than 1")

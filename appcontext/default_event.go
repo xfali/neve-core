@@ -291,7 +291,7 @@ func (invoker *eventInvoker) ResolveConsumer(consumer interface{}) error {
 	}
 
 	et := t.In(0)
-	if !et.Implements(eventType) {
+	if !et.AssignableTo(eventType) {
 		return errors.New("Param is not match, function param must Implements ApplicationEvent. ")
 	}
 
