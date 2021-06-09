@@ -5,4 +5,4 @@
 
 package version
 
-const NeveVersion = "v0.2.2.RELEASE"
+const NeveVersion = "v0.2.5.RELEASE"
