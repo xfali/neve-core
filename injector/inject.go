@@ -13,13 +13,20 @@ import (
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
+	"strings"
 )
 
 const (
-	defaultInjectTagName = "inject"
+	defaultInjectTagName    = "inject"
+	defaultRequiredTagField = "required"
+	defaultOmitTagField     = "omiterror"
 )
 
-var InjectTagName = defaultInjectTagName
+var (
+	InjectTagName    = defaultInjectTagName
+	RequiredTagField = defaultRequiredTagField
+	OmitTagField     = defaultOmitTagField
+)
 
 type Injector interface {
 	// 是否可以注入，是返回true，否则返回false
@@ -48,6 +55,7 @@ type Actuator func(c bean.Container, name string, v reflect.Value) error
 type defaultInjector struct {
 	logger    xlog.Logger
 	actuators map[reflect.Kind]Actuator
+	listeners map[string]Listener
 	tagName   string
 	recursive bool
 }
@@ -64,6 +72,10 @@ func New(opts ...Opt) *defaultInjector {
 		reflect.Struct:    ret.injectStruct,
 		reflect.Slice:     ret.injectSlice,
 		reflect.Map:       ret.injectMap,
+	}
+	ret.listeners = map[string]Listener{
+		RequiredTagField: NewRequiredListener(),
+		OmitTagField:     NewOmitErrorListener(ret.logger),
 	}
 	for _, opt := range opts {
 		opt(ret)
@@ -111,8 +123,9 @@ func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.
 
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
-		tag, ok := field.Tag.Lookup(injector.tagName)
+		tagAll, ok := field.Tag.Lookup(injector.tagName)
 		if ok {
+			tag, listeners := injector.parseTag(tagAll)
 			fieldValue := v.Field(i)
 			fieldType := fieldValue.Type()
 			if fieldType.Kind() == reflect.Ptr {
@@ -120,8 +133,12 @@ func (injector *defaultInjector) injectStructFields(c bean.Container, v reflect.
 			}
 			err := injector.InjectValue(c, tag, fieldValue)
 			if err != nil {
-				injector.logger.Errorf("Inject failed: Field [%s: %s] error: %s\n ",
+				err = fmt.Errorf("Inject failed: Field [%s: %s] error: %s\n ",
 					reflection.GetTypeName(t), field.Name, err.Error())
+				//injector.logger.Errorln(errStr)
+				for _, l := range listeners {
+					l.OnInjectFailed(err)
+				}
 			}
 		}
 	}
@@ -275,7 +292,7 @@ func (injector *defaultInjector) injectStruct(c bean.Container, name string, v r
 		} else {
 			// 只允许注入指针类型
 			err := fmt.Errorf("Inject struct: [%s] failed: value must be pointer. ", reflection.GetTypeName(vt))
-			injector.logger.Errorln(err)
+			//injector.logger.Errorln(err)
 			return err
 			//v.Set(ov.Elem())
 		}
@@ -287,6 +304,25 @@ func (injector *defaultInjector) injectStruct(c bean.Container, name string, v r
 	} else {
 		return errors.New("Inject nothing, cannot find any instance of  " + reflection.GetTypeName(vt))
 	}
+}
+
+func (injector *defaultInjector) parseTag(tag string) (name string, conf []Listener) {
+	strs := strings.Split(tag, ",")
+	opts := strs[1:]
+	// default must be required
+	if len(opts) == 0 {
+		opts = []string{RequiredTagField}
+	}
+
+	ret := make([]Listener, 0, len(opts))
+	for _, v := range opts {
+		l := injector.listeners[v]
+		if l != nil {
+			ret = append(ret, l)
+		}
+	}
+
+	return strs[0], ret
 }
 
 func OptSetLogger(v xlog.Logger) Opt {
@@ -312,6 +348,15 @@ func OptSetActuator(kind reflect.Kind, actuator Actuator) Opt {
 	return func(injector *defaultInjector) {
 		if actuator != nil {
 			injector.actuators[kind] = actuator
+		}
+	}
+}
+
+// 配置监听器
+func OptSetListener(field string, listener Listener) Opt {
+	return func(injector *defaultInjector) {
+		if listener != nil {
+			injector.listeners[field] = listener
 		}
 	}
 }
@@ -378,4 +423,33 @@ func (s *mapPutter) Scan(key string, value bean.Definition) bool {
 	//}
 
 	return true
+}
+
+type Listener interface {
+	OnInjectFailed(err error)
+}
+
+type OmitErrorListener struct {
+	logger xlog.Logger
+}
+
+func NewOmitErrorListener(logger xlog.Logger) *OmitErrorListener {
+	l := OmitErrorListener{}
+	l.logger = logger.WithDepth(2)
+	return &l
+}
+
+func (l *OmitErrorListener) OnInjectFailed(err error) {
+	l.logger.Errorln(err)
+}
+
+type RequiredListener struct{}
+
+func NewRequiredListener() *RequiredListener {
+	l := RequiredListener{}
+	return &l
+}
+
+func (l *RequiredListener) OnInjectFailed(err error) {
+	panic(err)
 }

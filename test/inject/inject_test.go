@@ -40,7 +40,7 @@ type dest struct {
 	A a `inject:""`
 	B a `inject:"b"`
 	// Would not inject
-	C io.Writer `inject:""`
+	C io.Writer `inject:",omiterror"`
 }
 
 func TestInjectInterface(t *testing.T) {
@@ -134,11 +134,11 @@ func TestInjectInterface(t *testing.T) {
 }
 
 type dest2 struct {
-	A  aImpl  `inject:""`
+	A  aImpl  `inject:",omiterror"`
 	B  *bImpl `inject:"b"`
-	B2 bImpl  `inject:"b"`
+	B2 bImpl  `inject:"b,omiterror"`
 	// Would not inject
-	C dest `inject:""`
+	C dest `inject:",omiterror"`
 }
 
 type slice struct {
@@ -283,84 +283,6 @@ func TestInjectSlice(t *testing.T) {
 			t.Fatal("inject D failed")
 		}
 	})
-
-	t.Run("inject twice", func(t *testing.T) {
-		c := bean.NewContainer()
-		c.Register(&aImpl{})
-		c.RegisterByName("b", &bImpl{})
-		i := injector.New()
-
-		d := dest2{}
-		err := i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-
-		err = i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-	})
-
-	t.Run("inject twice with modify", func(t *testing.T) {
-		c := bean.NewContainer()
-
-		c.Register(&aImpl{})
-		b := &bImpl{}
-		c.RegisterByName("b", b)
-		i := injector.New()
-
-		d := dest2{}
-		err := i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		b.i = 3
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 3 {
-			t.Fatal("inject B failed")
-		}
-		if d.B2.Get() != 2 {
-			t.Fatal("inject B2 failed")
-		}
-
-		err = i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		b.i = 2
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-		//if d.B2.Get() != 3 {
-		//	t.Fatal("inject B2 failed")
-		//}
-		// struct只允许注入指针类型
-		if d.B2.Get() != 2 {
-			t.Fatal("inject B2 failed")
-		}
-	})
 }
 
 type testMap struct {
@@ -414,84 +336,6 @@ func TestInjectMap(t *testing.T) {
 			if v.Get() != 2 {
 				t.Fatal("inject D failed")
 			}
-		}
-	})
-
-	t.Run("inject twice", func(t *testing.T) {
-		c := bean.NewContainer()
-		c.Register(&aImpl{})
-		c.RegisterByName("b", &bImpl{})
-		i := injector.New()
-
-		d := dest2{}
-		err := i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-
-		err = i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-	})
-
-	t.Run("inject twice with modify", func(t *testing.T) {
-		c := bean.NewContainer()
-
-		c.Register(&aImpl{})
-		b := &bImpl{}
-		c.RegisterByName("b", b)
-		i := injector.New()
-
-		d := dest2{}
-		err := i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		b.i = 3
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 3 {
-			t.Fatal("inject B failed")
-		}
-		if d.B2.Get() != 2 {
-			t.Fatal("inject B2 failed")
-		}
-
-		err = i.Inject(c, &d)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		b.i = 2
-		if d.A.Get() != 1 {
-			t.Fatal("inject A failed")
-		}
-		if d.B.Get() != 2 {
-			t.Fatal("inject B failed")
-		}
-		//if d.B2.Get() != 3 {
-		//	t.Fatal("inject B2 failed")
-		//}
-		// struct只允许注入指针类型
-		if d.B2.Get() != 2 {
-			t.Fatal("inject B2 failed")
 		}
 	})
 }
@@ -725,7 +569,7 @@ type destChange struct {
 	A a `Autowired:""`
 	B a `Autowired:"b"`
 	// Would not inject
-	C io.Writer `Autowired:""`
+	C io.Writer `Autowired:",omiterror"`
 }
 func TestInjectTagChange(t *testing.T) {
 	t.Run("inject once", func(t *testing.T) {
