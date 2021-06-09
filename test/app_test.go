@@ -449,6 +449,10 @@ func TestListener(t *testing.T) {
 	})
 
 	t.Run("default disable", func(t *testing.T) {
+		defer func() {
+			o := recover()
+			t.Log(o)
+		}()
 		app := neve.NewFileConfigApplication("assets/application-test.yaml",
 			neve.OptSetApplicationContext(appcontext.NewDefaultApplicationContext(appcontext.OptDisableEvent())))
 		testListener(app, t)

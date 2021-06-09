@@ -3,11 +3,10 @@
 // @version V1.0
 // Description:
 
-package appcontext
+package injector
 
 import (
 	"github.com/xfali/neve-core/bean"
-	"github.com/xfali/neve-core/injector"
 )
 
 type InjectFunctionRegistry interface {
@@ -28,7 +27,7 @@ type InjectFunctionHandler interface {
 	InjectFunctionRegistry
 
 	// 设置injector
-	SetInjector(injector injector.Injector)
+	SetInjector(injector Injector)
 
 	// 注入方法
 	InjectAllFunctions(container bean.Container) error
@@ -39,8 +38,8 @@ type FunctionInjectInvoker interface {
 	FunctionName() string
 
 	// 执行注入
-	Invoke(injector injector.Injector, container bean.Container, manager injector.ListenerManager) error
+	Invoke(injector Injector, container bean.Container, manager ListenerManager) error
 
 	// 检查function是否符合类型要求
-	ResolveFunction(injector injector.Injector, names []string, function interface{}) error
+	ResolveFunction(injector Injector, names []string, function interface{}) error
 }

@@ -3,13 +3,12 @@
 // @version V1.0
 // Description:
 
-package appcontext
+package injector
 
 import (
 	"errors"
 	"fmt"
 	"github.com/xfali/neve-core/bean"
-	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/neve-utils/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
@@ -17,18 +16,19 @@ import (
 )
 
 type defaultInjectInvoker struct {
-	types []reflect.Type
-	names []string
-	fv    reflect.Value
+	types    []reflect.Type
+	names    []string
+	fv       reflect.Value
+	funcName string
 }
 
-func (invoker *defaultInjectInvoker) Invoke(ij injector.Injector, container bean.Container, manager injector.ListenerManager) error {
+func (invoker *defaultInjectInvoker) Invoke(ij Injector, container bean.Container, manager ListenerManager) error {
 	values := make([]reflect.Value, len(invoker.types))
 	haveName := len(invoker.names) > 0
 	for i, t := range invoker.types {
 		o := reflect.New(t).Elem()
 		name := ""
-		var listeners []injector.Listener
+		var listeners []Listener
 		if haveName {
 			name = invoker.names[i]
 		}
@@ -37,7 +37,7 @@ func (invoker *defaultInjectInvoker) Invoke(ij injector.Injector, container bean
 		}
 		err := ij.InjectValue(container, name, o)
 		if err != nil {
-			err = fmt.Errorf("Inject function failed: %s error: %s\n", invoker.FunctionName(), err.Error())
+			err = fmt.Errorf("Inject function [%s] failed:error: %s\n", invoker.FunctionName(), err.Error())
 			for _, l := range listeners {
 				l.OnInjectFailed(err)
 			}
@@ -51,10 +51,10 @@ func (invoker *defaultInjectInvoker) Invoke(ij injector.Injector, container bean
 }
 
 func (invoker *defaultInjectInvoker) FunctionName() string {
-	return reflection.GetObjectName(invoker.fv.Type())
+	return invoker.funcName
 }
 
-func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector, names []string, function interface{}) error {
+func (invoker *defaultInjectInvoker) ResolveFunction(injector Injector, names []string, function interface{}) error {
 	t := reflect.TypeOf(function)
 	if t.Kind() != reflect.Func {
 		return errors.New("Param is not a function. ")
@@ -80,6 +80,10 @@ func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector,
 		invoker.types = append(invoker.types, tt)
 	}
 	invoker.fv = reflect.ValueOf(function)
+	invoker.funcName = reflection.GetTypeName(invoker.fv.Type())
+	if invoker.funcName == "" {
+		invoker.funcName = "func"
+	}
 	return nil
 }
 
@@ -99,24 +103,24 @@ func formatNames(names []string, size int) []string {
 
 type defaultInjectFunctionHandler struct {
 	logger   xlog.Logger
-	injector injector.Injector
+	injector Injector
 	creator  func() FunctionInjectInvoker
 
-	lm       injector.ListenerManager
+	lm       ListenerManager
 	invokers []FunctionInjectInvoker
 	locker   sync.Mutex
 }
 
-func newDefaultInjectFunctionHandler(logger xlog.Logger) *defaultInjectFunctionHandler {
+func NewDefaultInjectFunctionHandler(logger xlog.Logger) *defaultInjectFunctionHandler {
 	ret := &defaultInjectFunctionHandler{
 		logger:  logger,
 		creator: create,
 	}
-	ret.lm = injector.NewListenerManager(ret.logger)
+	ret.lm = NewListenerManager(ret.logger)
 	return ret
 }
 
-func (fi *defaultInjectFunctionHandler) SetInjector(injector injector.Injector) {
+func (fi *defaultInjectFunctionHandler) SetInjector(injector Injector) {
 	fi.injector = injector
 }
 

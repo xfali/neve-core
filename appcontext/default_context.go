@@ -32,7 +32,7 @@ type defaultApplicationContext struct {
 	logger      xlog.Logger
 	container   bean.Container
 	injector    injector.Injector
-	funcHandler InjectFunctionHandler
+	funcHandler injector.InjectFunctionHandler
 	eventProc   ApplicationEventProcessor
 
 	ctxAwares    []ApplicationContextAware
@@ -58,7 +58,7 @@ func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 		curState: statusNone,
 	}
 	ret.injector = injector.New(injector.OptSetLogger(ret.logger))
-	ret.funcHandler = newDefaultInjectFunctionHandler(ret.logger)
+	ret.funcHandler = injector.NewDefaultInjectFunctionHandler(ret.logger)
 
 	for _, opt := range opts {
 		opt(ret)
@@ -87,7 +87,7 @@ func OptSetInjector(injector injector.Injector) Opt {
 	}
 }
 
-func OptSetInjectFunctionHandler(handler InjectFunctionHandler) Opt {
+func OptSetInjectFunctionHandler(handler injector.InjectFunctionHandler) Opt {
 	return func(context *defaultApplicationContext) {
 		context.funcHandler = handler
 	}
@@ -217,7 +217,7 @@ func (ctx *defaultApplicationContext) addProcessor(p processor.Processor, withLo
 }
 
 func (ctx *defaultApplicationContext) classifyInjectFunction(o interface{}) error {
-	if v, ok := o.(InjectFunction); ok {
+	if v, ok := o.(injector.InjectFunction); ok {
 		return v.RegisterFunction(ctx.funcHandler)
 	}
 	return nil
