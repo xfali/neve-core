@@ -22,17 +22,25 @@ type defaultInjectInvoker struct {
 	fv    reflect.Value
 }
 
-func (invoker *defaultInjectInvoker) Invoke(injector injector.Injector, container bean.Container) error {
+func (invoker *defaultInjectInvoker) Invoke(ij injector.Injector, container bean.Container, manager injector.ListenerManager) error {
 	values := make([]reflect.Value, len(invoker.types))
 	haveName := len(invoker.names) > 0
 	for i, t := range invoker.types {
 		o := reflect.New(t).Elem()
 		name := ""
+		var listeners []injector.Listener
 		if haveName {
 			name = invoker.names[i]
 		}
-		err := injector.InjectValue(container, name, o)
+		if manager != nil {
+			name, listeners = manager.ParseListener(name)
+		}
+		err := ij.InjectValue(container, name, o)
 		if err != nil {
+			err = fmt.Errorf("Inject function failed: %s error: %s\n", invoker.FunctionName(), err.Error())
+			for _, l := range listeners {
+				l.OnInjectFailed(err)
+			}
 			return err
 		}
 		values[i] = o
@@ -40,6 +48,10 @@ func (invoker *defaultInjectInvoker) Invoke(injector injector.Injector, containe
 
 	invoker.fv.Call(values)
 	return nil
+}
+
+func (invoker *defaultInjectInvoker) FunctionName() string {
+	return reflection.GetObjectName(invoker.fv.Type())
 }
 
 func (invoker *defaultInjectInvoker) ResolveFunction(injector injector.Injector, names []string, function interface{}) error {
@@ -90,6 +102,7 @@ type defaultInjectFunctionHandler struct {
 	injector injector.Injector
 	creator  func() FunctionInjectInvoker
 
+	lm       injector.ListenerManager
 	invokers []FunctionInjectInvoker
 	locker   sync.Mutex
 }
@@ -99,6 +112,7 @@ func newDefaultInjectFunctionHandler(logger xlog.Logger) *defaultInjectFunctionH
 		logger:  logger,
 		creator: create,
 	}
+	ret.lm = injector.NewListenerManager(ret.logger)
 	return ret
 }
 
@@ -113,9 +127,9 @@ func (fi *defaultInjectFunctionHandler) InjectAllFunctions(container bean.Contai
 	defer fi.locker.Unlock()
 
 	for _, invoker := range fi.invokers {
-		err := invoker.Invoke(fi.injector, container)
+		err := invoker.Invoke(fi.injector, container, fi.lm)
 		if err != nil {
-			fi.logger.Errorf("Inject function failed: %s error: %s\n", err)
+			//fi.logger.Errorf("Inject function failed: %s error: %s\n", invoker.FunctionName(), err.Error())
 			last = err
 		}
 	}

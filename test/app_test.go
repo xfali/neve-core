@@ -121,7 +121,7 @@ type testBean interface {
 type injectBean struct {
 	A  a      `inject:""`
 	B  a      `inject:"b"`
-	BS *bImpl `inject:"b"`
+	BS *bImpl `inject:"b,omiterror"`
 	Bf a      `inject:"c"`
 }
 

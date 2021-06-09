@@ -35,8 +35,11 @@ type InjectFunctionHandler interface {
 }
 
 type FunctionInjectInvoker interface {
+	// 执行注入的function名称
+	FunctionName() string
+
 	// 执行注入
-	Invoke(injector injector.Injector, container bean.Container) error
+	Invoke(injector injector.Injector, container bean.Container, manager injector.ListenerManager) error
 
 	// 检查function是否符合类型要求
 	ResolveFunction(injector injector.Injector, names []string, function interface{}) error

@@ -41,6 +41,7 @@ userdata:
 * 配置可使用{{ env "ENV_NAME" DEFAULT_VALUE }}或{{.Env.ENV_NAME}}获取环境变量的值，在读取时进行替换(规则见[fig](https://github.com/xfali/fig))。
 
 ### 3. 注册
+
 #### 3.1 快速入门
 * 直接注册：RegisterBean
 * 按名称注册：RegisterBeanByName
@@ -59,6 +60,8 @@ neve在注册时可以添加配置参数，目前支持的配置参数有
 ```
 app.RegisterBean(NewBean(), bean.SetOrder(2))
 ```
+
+**注意在注册和注入时名称都不可包含逗号“,”**
 
 ### 4. 注入
 #### 4.1注入类型支持：
@@ -133,6 +136,11 @@ app.RegisterBean(&funcBean{})
 neve会自动检测并将对象通过调用注册的注入方法进行注入。
 * 方法的参数注入规则同tag注入的注入规则；
 * 方法注入的调用在所有bean完成初始化之后，在调用BeanAfterSet之前。
+* 方法注入失败时默认会触发panic，通tag注入一样，可以通过名称中增加“omiterror”忽略错误：
+```
+	err = registry.RegisterInjectFunction(func(r io.Reader, w io.Writer) {
+	}, "reader,omiterror", "writer,omiterror")
+```
 
 ### 5. 注意事项
 1. 注入struct Pointer时，名称必须完全匹配：

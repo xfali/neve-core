@@ -12,6 +12,7 @@ import (
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
+	"io"
 	"testing"
 	"time"
 )
@@ -70,6 +71,12 @@ func (f *funcBean) RegisterFunction(registry appcontext.InjectFunctionRegistry) 
 	err = registry.RegisterInjectFunction(func(as []a, a a, b *bImpl) {
 		f.testInject(as, a, b)
 	}, "", "a", "")
+	if err != nil {
+		return err
+	}
+
+	err = registry.RegisterInjectFunction(func(w io.Writer) {
+	}, ",omiterror")
 	if err != nil {
 		return err
 	}

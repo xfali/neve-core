@@ -14,6 +14,7 @@ import (
 	"github.com/xfali/xlog"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 const (
@@ -414,7 +415,7 @@ func (l *RequiredListener) OnInjectFailed(err error) {
 }
 
 type defaultListenerManager struct {
-	listeners map[string]Listener
+	listeners sync.Map
 }
 
 func NewListenerManager(param ...xlog.Logger) *defaultListenerManager {
@@ -424,17 +425,16 @@ func NewListenerManager(param ...xlog.Logger) *defaultListenerManager {
 	} else {
 		logger = xlog.GetLogger()
 	}
-	return &defaultListenerManager{
-		listeners: map[string]Listener{
-			RequiredTagField: NewRequiredListener(),
-			OmitTagField:     NewOmitErrorListener(logger),
-		},
+	ret := &defaultListenerManager{
 	}
+	ret.listeners.Store(RequiredTagField, NewRequiredListener())
+	ret.listeners.Store(OmitTagField, NewOmitErrorListener(logger))
+	return ret
 }
 
 func (mgr *defaultListenerManager) AddListener(name string, listener Listener) {
 	if listener != nil {
-		mgr.listeners[name] = listener
+		mgr.listeners.Store(name, listener)
 	}
 }
 
@@ -448,9 +448,9 @@ func (mgr *defaultListenerManager) ParseListener(tag string) (string, []Listener
 
 	ret := make([]Listener, 0, len(opts))
 	for _, v := range opts {
-		l := mgr.listeners[v]
-		if l != nil {
-			ret = append(ret, l)
+		l, ok := mgr.listeners.Load(v)
+		if ok && l != nil {
+			ret = append(ret, l.(Listener))
 		}
 	}
 

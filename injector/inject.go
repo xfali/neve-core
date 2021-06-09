@@ -45,6 +45,6 @@ type ListenerManager interface {
 	// 添加监听器
 	AddListener(name string, listener Listener)
 
-	// 从传入字串中解析注入名称和监听器
+	// 从传入字串中解析注入名称和匹配监听器
 	ParseListener(v string) (name string, listeners []Listener)
 }

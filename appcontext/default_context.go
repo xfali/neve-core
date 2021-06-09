@@ -254,9 +254,7 @@ func (ctx *defaultApplicationContext) Start() error {
 		ctx.notifyAware()
 
 		// Inject Beans
-		if !ctx.disableInject {
-			ctx.injectAll()
-		}
+		ctx.injectAll()
 		// Processor classify
 		ctx.classifyBean()
 		// call and inject all functions
@@ -340,10 +338,16 @@ func (ctx *defaultApplicationContext) doProcess() {
 }
 
 func (ctx *defaultApplicationContext) doFunctionInject() {
+	if ctx.disableInject {
+		return
+	}
 	ctx.funcHandler.InjectAllFunctions(ctx.container)
 }
 
 func (ctx *defaultApplicationContext) injectAll() {
+	if ctx.disableInject {
+		return
+	}
 	ctx.container.Scan(func(key string, value bean.Definition) bool {
 		if value.IsObject() {
 			err := ctx.injector.Inject(ctx.container, value.Interface())
