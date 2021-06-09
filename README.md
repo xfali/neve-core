@@ -90,6 +90,13 @@ type injectBeanB struct {
 	Bf a      `Autowired:"c"`
 }
 ```
+使用tag注入，当注入失败时默认会触发panic，可以通过添加“omiterror”field来忽略注入错误，避免panic。
+```
+type injectBean struct {
+	A  a      `inject:",omiterror"`
+	BS *bImpl `inject:"b,omiterror"`
+}
+```
 #### 4.3 使用方法注入
 neve除了tag注入之外也支持方法注入。相较于tag注入，方法注入可以避免field公开。
 
