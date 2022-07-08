@@ -11,6 +11,7 @@ import (
 	"github.com/xfali/neve-core/bean"
 	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
+	reflectx "github.com/xfali/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
 	"strings"
@@ -192,7 +193,12 @@ func (injector *defaultInjector) injectSlice(c bean.Container, name string, v re
 	elemType := vt.Elem()
 	o, ok := c.GetDefinition(name)
 	if ok {
-		return reflection2.SmartCopySlice(v, o.Value())
+		dv := o.Value()
+		n, err := reflectx.SetOrCopySlice(v, dv, true)
+		if n != dv.Len() {
+			injector.logger.Infof("Set slice source have %d elements set %d elements", dv.Len(), n)
+		}
+		return err
 	} else {
 		//自动注入
 		destTmp := sliceAppender{
@@ -226,7 +232,12 @@ func (injector *defaultInjector) injectMap(c bean.Container, name string, v refl
 	elemType := vt.Elem()
 	o, ok := c.GetDefinition(name)
 	if ok {
-		return reflection2.SmartCopyMap(v, o.Value())
+		dv := o.Value()
+		n, err := reflectx.SetOrCopyMap(v, dv, true)
+		if n != dv.Len() {
+			injector.logger.Infof("Set map source have %d elements set %d elements", dv.Len(), n)
+		}
+		return err
 	} else {
 		if keyType.Kind() != reflect.String {
 			return errors.New("Key type must be string. ")
@@ -340,6 +351,8 @@ func (s *sliceAppender) Scan(key string, value bean.Definition) bool {
 	// interface
 	if ot.AssignableTo(s.elemType) {
 		s.v = reflect.Append(s.v, value.Value())
+	} else if ot.ConvertibleTo(s.elemType) {
+		s.v = reflect.Append(s.v, value.Value().Convert(s.elemType))
 	}
 	//if s.elemType.Kind() == reflect.Interface {
 	//	if ot.Implements(s.elemType) {
@@ -372,6 +385,8 @@ func (s *mapPutter) Scan(key string, value bean.Definition) bool {
 	// interface
 	if ot.AssignableTo(s.elemType) {
 		s.v.SetMapIndex(reflect.ValueOf(key), value.Value())
+	} else if ot.ConvertibleTo(s.elemType) {
+		s.v.SetMapIndex(reflect.ValueOf(key), value.Value().Convert(s.elemType))
 	}
 	//if s.elemType.Kind() == reflect.Interface {
 	//	if ot.Implements(s.elemType) {
