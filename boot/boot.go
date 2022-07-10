@@ -21,8 +21,11 @@ import (
 	"flag"
 	"github.com/xfali/neve-core"
 	"github.com/xfali/neve-core/bean"
+	"os"
 	"sync"
 )
+
+const EnvNameConfigFile = "NEVE_CONFIG_FILE"
 
 var (
 	// 默认的配置路径
@@ -65,6 +68,9 @@ func Customize(app neve.Application) {
 }
 
 func defaultCreator() neve.Application {
+	if conf, ok := os.LookupEnv(EnvNameConfigFile); ok {
+		ConfigPath = conf
+	}
 	flag.StringVar(&ConfigPath, "f", ConfigPath, "Application configuration file path.")
 	flag.Parse()
 	return neve.NewFileConfigApplication(ConfigPath)
