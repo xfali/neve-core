@@ -47,7 +47,16 @@ func (p *ValueProcessor) Classify(o interface{}) (bool, error) {
 	if p.tagName == "" {
 		return true, fig.Fill(p.conf, o)
 	} else {
-		return true, fig.FillExWithTagName(p.conf, o, false, p.tagPxName, p.tagName)
+		// 内部兼容tag 'fig'
+		return true, fig.FillExWithTagNames(p.conf, o, false,
+			[]string{
+				fig.TagPrefixName,
+				p.tagPxName,
+			},
+			[]string{
+				fig.TagName,
+				p.tagName,
+			})
 	}
 }
 
