@@ -160,6 +160,11 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return nil
 	}
 	var err error
+	o, err = injector.WrapBean(o, ctx.container, ctx.injector)
+	if err != nil {
+		return err
+	}
+
 	if name == "" {
 		err = ctx.container.Register(o, opts...)
 	} else {

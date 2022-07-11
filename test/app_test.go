@@ -119,10 +119,11 @@ type testBean interface {
 }
 
 type injectBean struct {
-	A  a      `inject:""`
-	B  a      `inject:"b"`
-	BS *bImpl `inject:"b,omiterror"`
-	Bf a      `inject:"c"`
+	A     a      `inject:""`
+	B     a      `inject:"b"`
+	BS    *bImpl `inject:"b,omiterror"`
+	Bf    a      `inject:"c"`
+	Afunc a      `inject:"d"`
 }
 
 func (v *injectBean) validate() {
@@ -137,6 +138,11 @@ func (v *injectBean) validate() {
 	}
 	if v.Bf.Get() != "hello world" {
 		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	}
+	if v.Afunc.Get() != "0" {
+		xlog.Fatalln("expect: '0' but get: ", v.Afunc.Get())
+	} else {
+		xlog.Infoln("Afunc: ", v.Afunc)
 	}
 }
 
@@ -213,6 +219,13 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	// 注意，此处如果使用RegisterBean会使用a的类型名称注册构造方法
 	err = app.RegisterBeanByName("c", func() a {
 		return &bImpl{V: "hello world"}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBeanByName("d", func(a *aImpl) a {
+		return &bImpl{V: a.v}
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -159,3 +159,39 @@ func (fi *defaultInjectFunctionHandler) addInvoker(invoker FunctionInjectInvoker
 
 	fi.invokers = append(fi.invokers, invoker)
 }
+
+func WrapBean(o interface{}, container bean.Container, injector Injector) (interface{}, error) {
+	ft := reflect.TypeOf(o)
+	if ft.Kind() != reflect.Func {
+		return o, nil
+	}
+	if ft.NumOut() != 1 {
+		return o, nil
+	}
+
+	rt := ft.Out(0)
+	if rt.Kind() != reflect.Ptr && rt.Kind() != reflect.Interface {
+		return o, errors.New("Bean function 1st return value must be pointer or interface. ")
+	}
+	pn := ft.NumIn()
+	if pn > 0 {
+		retFv := reflect.MakeFunc(reflect.FuncOf(nil, []reflect.Type{rt}, false), func(args []reflect.Value) (results []reflect.Value) {
+			fv := reflect.ValueOf(o)
+			values := make([]reflect.Value, pn)
+			for i := 0; i < pn; i++ {
+				o := reflect.New(ft.In(i)).Elem()
+				name := ""
+				err := injector.InjectValue(container, name, o)
+				if err != nil {
+					err = fmt.Errorf("Inject function [%s] failed:error: %s\n", ft.Name(), err.Error())
+					panic(err)
+				}
+				values[i] = o
+			}
+
+			return fv.Call(values)
+		})
+		return retFv.Interface(), nil
+	}
+	return o, nil
+}

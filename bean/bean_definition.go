@@ -7,9 +7,11 @@ package bean
 
 import (
 	"errors"
+	errors2 "github.com/xfali/neve-core/errors"
 	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
 	"reflect"
+	"sync"
 	"sync/atomic"
 )
 
@@ -46,12 +48,16 @@ type objectDefinition struct {
 
 type DefinitionCreator func(o interface{}) (Definition, error)
 
-var beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
-	reflect.Ptr:   newObjectDefinition,
-	reflect.Func:  newFunctionDefinition,
-	reflect.Slice: newSliceDefinition,
-	reflect.Map:   newMapDefinition,
-}
+var (
+	InitializingType       = reflect.TypeOf((*Initializing)(nil)).Elem()
+	DisposableType         = reflect.TypeOf((*Disposable)(nil)).Elem()
+	beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
+		reflect.Ptr:   newObjectDefinition,
+		reflect.Func:  newFunctionDefinition,
+		reflect.Slice: newSliceDefinition,
+		reflect.Map:   newMapDefinition,
+	}
+)
 
 // 注册BeanDefinition创建器，使其能处理更多类型。
 // 默认支持Pointer、Function
@@ -195,6 +201,116 @@ func (d *functionDefinition) AfterSet() error {
 
 func (d *functionDefinition) Destroy() error {
 	return nil
+}
+
+type functionExDefinition struct {
+	name         string
+	o            interface{}
+	fn           reflect.Value
+	t            reflect.Type
+	paramTypes   []reflect.Type
+	container    Container
+
+	instances    []reflect.Value
+	instanceLock sync.RWMutex
+}
+
+func verifyBeanFunctionEx(ft reflect.Type) error {
+	if ft.Kind() != reflect.Func {
+		return errors.New("Param not function. ")
+	}
+	if ft.NumOut() != 1 {
+		return errors.New("Bean function must have 1 return value: TYPE. ")
+	}
+
+	rt := ft.Out(0)
+	if rt.Kind() != reflect.Ptr && rt.Kind() != reflect.Interface {
+		return errors.New("Bean function 1st return value must be pointer or interface. ")
+	}
+
+	return nil
+}
+
+func newFunctionExDefinition(c Container, o interface{}) (Definition, error) {
+	ft := reflect.TypeOf(o)
+	err := verifyBeanFunctionEx(ft)
+	if err != nil {
+		return nil, err
+	}
+	ot := ft.Out(0)
+	fn := reflect.ValueOf(o)
+	ret := &functionExDefinition{
+		o:          o,
+		name:       reflection.GetTypeName(ot),
+		fn:         fn,
+		t:          ot,
+		paramTypes: make([]reflect.Type, ft.NumIn()),
+		container:  c,
+	}
+	for i := range ret.paramTypes {
+		ret.paramTypes[i] = ft.In(i)
+	}
+	return ret, nil
+}
+
+func (d *functionExDefinition) Type() reflect.Type {
+	return d.t
+}
+
+func (d *functionExDefinition) Name() string {
+	return d.name
+}
+
+func (d *functionExDefinition) Value() reflect.Value {
+	v := d.fn.Call(nil)[0]
+	if v.IsValid() {
+		d.instanceLock.Lock()
+		defer d.instanceLock.Unlock()
+		d.instances = append(d.instances, v)
+	}
+	return v
+}
+
+func (d *functionExDefinition) Interface() interface{} {
+	return d.o
+}
+
+func (d *functionExDefinition) IsObject() bool {
+	return false
+}
+
+func (d *functionExDefinition) AfterSet() error {
+	d.instanceLock.RLock()
+	defer d.instanceLock.RUnlock()
+	var errs errors2.Errors
+	for _, i := range d.instances {
+		if !i.IsNil() {
+			if v, ok := i.Interface().(Initializing); ok {
+				err := v.BeanAfterSet()
+				if err != nil {
+					_ = errs.AddError(err)
+				}
+			}
+		}
+	}
+	return errs
+}
+
+func (d *functionExDefinition) Destroy() error {
+	d.instanceLock.RLock()
+	defer d.instanceLock.RUnlock()
+	var errs errors2.Errors
+	for _, i := range d.instances {
+		if !i.IsNil() {
+			if v, ok := i.Interface().(Disposable); ok {
+				err := v.BeanDestroy()
+				if err != nil {
+					_ = errs.AddError(err)
+				}
+			}
+		}
+	}
+	return errs
 }
 
 type sliceDefinition struct {
