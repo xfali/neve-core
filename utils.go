@@ -23,7 +23,7 @@ func HandlerSignal(logger xlog.Logger, closers ...func() error) (err error) {
 		switch si {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
 			time.Sleep(100 * time.Millisecond)
-			xlog.Infof("get a signal %s, stop the server", si.String())
+			xlog.Infof("Got a signal %s, closing...", si.String())
 			go func() {
 				for i := range closers {
 					cErr := closers[i]()

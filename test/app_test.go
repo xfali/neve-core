@@ -28,6 +28,13 @@ type aImpl struct {
 	v string
 }
 
+type testTmp struct {
+}
+
+func (t testTmp) t(a *aImpl) *bImpl {
+	return &bImpl{custom: a.v}
+}
+
 func (a *aImpl) Get() string {
 	return a.v
 }
@@ -125,6 +132,7 @@ type injectBean struct {
 	BS    *bImpl `inject:"b,omiterror"`
 	Bf    a      `inject:"c"`
 	Afunc *bImpl `inject:"d"`
+	Bfunc *bImpl `inject:"e"`
 }
 
 func (v *injectBean) validate() {
@@ -148,6 +156,12 @@ func (v *injectBean) validate() {
 	} else {
 		xlog.Infoln("Afunc: ", v.Afunc.custom)
 	}
+
+	if v.Bfunc.custom != "0" || v.Bfunc.V != "this is a test" {
+		xlog.Fatalln("expect: '0' but get: ", v.Bfunc.custom)
+	} else {
+		xlog.Infoln("Bfunc: ", v.Bfunc.custom)
+	}
 }
 
 type injectBeanB struct {
@@ -167,8 +181,8 @@ func (v *injectBeanB) validate() {
 	if v.BS.Get() != "this is a test" {
 		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
 	}
-	if v.Bf.Get() != "hello world" {
-		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	if v.Bf.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
 	}
 }
 
@@ -231,6 +245,11 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	err = app.RegisterBeanByName("d", func(a *aImpl) *bImpl {
 		return &bImpl{custom: a.v}
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBeanByName("e", testTmp{}.t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,11 +400,11 @@ func testOrder(app neve.Application, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBean(&order2{t: t}, bean.SetOrder(2))
+	err = app.RegisterBean(&order2{t: t}, neve.SetOrder(2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = app.RegisterBeanByName("c", &order3{t: t}, bean.SetOrder(3))
+	err = app.RegisterBeanByName("c", &order3{t: t}, neve.SetOrder(3))
 	if err != nil {
 		t.Fatal(err)
 	}

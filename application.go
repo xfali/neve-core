@@ -19,20 +19,22 @@ type Application interface {
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
-	RegisterBean(o interface{}, opts ...bean.RegisterOpt) error
+	RegisterBean(o interface{}, opts ...RegisterOpt) error
 
 	// 使用指定名称注册对象
 	// 支持注册
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
-	RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error
+	RegisterBeanByName(name string, o interface{}, opts ...RegisterOpt) error
 
 	AddListeners(listeners ...interface{})
 
 	// 启动应用容器
 	Run() error
 }
+
+type RegisterOpt = bean.RegisterOpt
 
 type FileConfigApplication struct {
 	ctx    appcontext.ApplicationContext
@@ -75,11 +77,11 @@ func NewFileConfigApplication(configPath string, opts ...Opt) *FileConfigApplica
 	return NewApplication(prop, opts...)
 }
 
-func (app *FileConfigApplication) RegisterBean(o interface{}, opts ...bean.RegisterOpt) error {
+func (app *FileConfigApplication) RegisterBean(o interface{}, opts ...RegisterOpt) error {
 	return app.ctx.RegisterBean(o, opts...)
 }
 
-func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{}, opts ...bean.RegisterOpt) error {
+func (app *FileConfigApplication) RegisterBeanByName(name string, o interface{}, opts ...RegisterOpt) error {
 	return app.ctx.RegisterBeanByName(name, o, opts...)
 }
 
@@ -114,4 +116,8 @@ func OptSetInjectTagName(name string) Opt {
 				injector.OptSetLogger(application.logger),
 				injector.OptSetInjectTagName(name))))
 	}
+}
+
+func SetOrder(order int) RegisterOpt {
+	return bean.SetOrder(order)
 }

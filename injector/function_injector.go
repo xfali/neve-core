@@ -13,6 +13,7 @@ import (
 	"github.com/xfali/xlog"
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
 
 type defaultInjectInvoker struct {
@@ -194,4 +195,43 @@ func WrapBean(o interface{}, container bean.Container, injector Injector) (inter
 		return retFv.Interface(), nil
 	}
 	return o, nil
+}
+
+type singletonFunction struct {
+	once int32
+	f    interface{}
+
+	ret []reflect.Value
+}
+
+func (f *singletonFunction) get() interface{} {
+	ft := reflect.TypeOf(f.f)
+	if ft.Kind() != reflect.Func {
+		panic("Origin interface is not a function. ")
+	}
+	if ft.NumOut() != 1 {
+		panic("Origin interface without return value. ")
+	}
+
+	rt := ft.Out(0)
+	if rt.Kind() != reflect.Ptr && rt.Kind() != reflect.Interface {
+		panic("Bean function 1st return value must be pointer or interface. ")
+	}
+
+	retFv := reflect.MakeFunc(ft, func(args []reflect.Value) (results []reflect.Value) {
+		if atomic.CompareAndSwapInt32(&f.once, 0, 1) {
+			fv := reflect.ValueOf(f.f)
+			f.ret = fv.Call(args)
+		}
+		return f.ret
+	})
+	return retFv.Interface()
+}
+
+func Singleton(function interface{}) interface{} {
+	s := singletonFunction{
+		f:    function,
+		once: 0,
+	}
+	return s.get()
 }
