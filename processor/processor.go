@@ -10,6 +10,7 @@ import (
 	"github.com/xfali/neve-core/bean"
 )
 
+
 type Processor interface {
 	// 初始化对象处理器
 	Init(conf fig.Properties, container bean.Container) error
@@ -18,7 +19,7 @@ type Processor interface {
 	// 注意：该方法建议只做归类，具体处理使用Process，不保证Processor的实现在此方法中做了相关处理。
 	// 该方法在Bean Inject注入之后调用
 	// return: bool 是否能够处理对象， error 处理是否有错误
-	Classify(o interface{}) (bool, error)
+	bean.Classifier
 
 	// 对已分类对象做统一处理，注意如果存在耗时操作，请使用其他协程处理。
 	// 该方法在Classify及BeanAfterSet后调用。

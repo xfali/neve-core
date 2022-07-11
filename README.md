@@ -298,4 +298,20 @@ app.RegisterBeanByName("c", func() a {
     return &bImpl{V: "hello world"}
 })
 ```
-注意：目前注册函数的方式返回的值不能在返回时自动注入对象和配置的值，请谨慎使用。
+自版本 *v0.2.6.RELEASE* 开始已支持注册带参数的function，参数为该方法依赖的被neve管理的对象（已注册到neve）。
+```
+// 注意参数a *aImpl，在调用该方法获得对象实例时会自动注入已被neve管理的*aImpl实例。
+app.RegisterBeanByName("d", func(a *aImpl) a {
+	return &bImpl{V: a.v}
+})
+```
+
+注意：通过注册function返回的实例无法使用tag方式注入对象，仅通过参数方式注入
+当注入产生循环依赖时会抛出panic，类似：
+```
+BeanDefinition: [Function] inject type [github.com.xfali.neve-core.test.bImpl] Circular dependency
+```
+
+function返回的对象的生命周期管理方式与普通bean生命周期一致：
+通过实现Initializing、Disposable接口进行初始化及资源回收。
+

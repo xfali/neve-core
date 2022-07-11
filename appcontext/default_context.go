@@ -299,20 +299,21 @@ func (ctx *defaultApplicationContext) notifyAware() {
 
 func (ctx *defaultApplicationContext) classifyBean() {
 	ctx.container.Scan(func(key string, value bean.Definition) bool {
-		if value.IsObject() {
-			// 必须先分类，由于ValueProcessor会在Classify将配置的属性值注入
-			ctx.classifyOneBean(value.Interface())
-		}
+		//if value.IsObject() {
+		// 必须先分类，由于ValueProcessor会在Classify将配置的属性值注入
+		ctx.classifyOneBean(value)
+		//}
 		return true
 	})
 }
 
-func (ctx *defaultApplicationContext) classifyOneBean(o interface{}) {
+func (ctx *defaultApplicationContext) classifyOneBean(o bean.Definition) {
 	ctx.processorsLock.Lock()
 	defer ctx.processorsLock.Unlock()
 
 	for _, processor := range ctx.processors {
-		_, err := processor.Classify(o)
+		_, err := o.Classify(processor)
+		//_, err := processor.Classify(o)
 		if err != nil {
 			ctx.logger.Errorln(err)
 		}
@@ -346,7 +347,10 @@ func (ctx *defaultApplicationContext) doFunctionInject() {
 	if ctx.disableInject {
 		return
 	}
-	ctx.funcHandler.InjectAllFunctions(ctx.container)
+	err := ctx.funcHandler.InjectAllFunctions(ctx.container)
+	if err != nil {
+		ctx.logger.Errorln(err)
+	}
 }
 
 func (ctx *defaultApplicationContext) injectAll() {

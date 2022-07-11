@@ -7,6 +7,7 @@ package bean
 
 import (
 	"errors"
+	"fmt"
 	errors2 "github.com/xfali/neve-core/errors"
 	reflection2 "github.com/xfali/neve-core/reflection"
 	"github.com/xfali/neve-utils/reflection"
@@ -14,6 +15,14 @@ import (
 	"sync"
 	"sync/atomic"
 )
+
+type Classifier interface {
+	// 对象分类，判断对象是否实现某些接口，并进行相关归类。为了支持多协程处理，该方法应线程安全。
+	// 注意：该方法建议只做归类，具体处理使用Process，不保证Processor的实现在此方法中做了相关处理。
+	// 该方法在Bean Inject注入之后调用
+	// return: bool 是否能够处理对象， error 处理是否有错误
+	Classify(o interface{}) (bool, error)
+}
 
 type Definition interface {
 	// 类型
@@ -36,6 +45,9 @@ type Definition interface {
 
 	// 销毁对象
 	Destroy() error
+
+	// 对对象进行分类
+	Classify(classifier Classifier) (bool, error)
 }
 
 type objectDefinition struct {
@@ -53,7 +65,7 @@ var (
 	DisposableType         = reflect.TypeOf((*Disposable)(nil)).Elem()
 	beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
 		reflect.Ptr:   newObjectDefinition,
-		reflect.Func:  newFunctionDefinition,
+		reflect.Func:  newFunctionExDefinition,
 		reflect.Slice: newSliceDefinition,
 		reflect.Map:   newMapDefinition,
 	}
@@ -135,6 +147,10 @@ func (d *objectDefinition) Destroy() error {
 	return nil
 }
 
+func (d *objectDefinition) Classify(classifier Classifier) (bool, error) {
+	return classifier.Classify(d.o)
+}
+
 var errType = reflect.TypeOf((*error)(nil)).Elem()
 
 type functionDefinition struct {
@@ -203,13 +219,21 @@ func (d *functionDefinition) Destroy() error {
 	return nil
 }
 
+func (d *functionDefinition) Classify(classifier Classifier) (bool, error) {
+	return false, nil
+}
+
+const (
+	functionDefinitionNone = iota
+	functionDefinitionInjecting
+)
+
 type functionExDefinition struct {
-	name         string
-	o            interface{}
-	fn           reflect.Value
-	t            reflect.Type
-	paramTypes   []reflect.Type
-	container    Container
+	name   string
+	o      interface{}
+	fn     reflect.Value
+	t      reflect.Type
+	status int32
 
 	instances    []reflect.Value
 	instanceLock sync.RWMutex
@@ -231,7 +255,7 @@ func verifyBeanFunctionEx(ft reflect.Type) error {
 	return nil
 }
 
-func newFunctionExDefinition(c Container, o interface{}) (Definition, error) {
+func newFunctionExDefinition(o interface{}) (Definition, error) {
 	ft := reflect.TypeOf(o)
 	err := verifyBeanFunctionEx(ft)
 	if err != nil {
@@ -240,15 +264,10 @@ func newFunctionExDefinition(c Container, o interface{}) (Definition, error) {
 	ot := ft.Out(0)
 	fn := reflect.ValueOf(o)
 	ret := &functionExDefinition{
-		o:          o,
-		name:       reflection.GetTypeName(ot),
-		fn:         fn,
-		t:          ot,
-		paramTypes: make([]reflect.Type, ft.NumIn()),
-		container:  c,
-	}
-	for i := range ret.paramTypes {
-		ret.paramTypes[i] = ft.In(i)
+		o:    o,
+		name: reflection.GetTypeName(ot),
+		fn:   fn,
+		t:    ot,
 	}
 	return ret, nil
 }
@@ -262,13 +281,18 @@ func (d *functionExDefinition) Name() string {
 }
 
 func (d *functionExDefinition) Value() reflect.Value {
-	v := d.fn.Call(nil)[0]
-	if v.IsValid() {
-		d.instanceLock.Lock()
-		defer d.instanceLock.Unlock()
-		d.instances = append(d.instances, v)
+	if atomic.CompareAndSwapInt32(&d.status, functionDefinitionNone, functionDefinitionInjecting) {
+		defer atomic.CompareAndSwapInt32(&d.status, functionDefinitionInjecting, functionDefinitionNone)
+		v := d.fn.Call(nil)[0]
+		if v.IsValid() {
+			d.instanceLock.Lock()
+			defer d.instanceLock.Unlock()
+			d.instances = append(d.instances, v)
+		}
+		return v
+	} else {
+		panic(fmt.Errorf("BeanDefinition: [Function] inject type [%s] Circular dependency ", d.name))
 	}
-	return v
 }
 
 func (d *functionExDefinition) Interface() interface{} {
@@ -293,6 +317,9 @@ func (d *functionExDefinition) AfterSet() error {
 			}
 		}
 	}
+	if errs.Empty() {
+		return nil
+	}
 	return errs
 }
 
@@ -310,7 +337,32 @@ func (d *functionExDefinition) Destroy() error {
 			}
 		}
 	}
+	if errs.Empty() {
+		return nil
+	}
 	return errs
+}
+
+func (d *functionExDefinition) Classify(classifier Classifier) (bool, error) {
+	d.instanceLock.RLock()
+	defer d.instanceLock.RUnlock()
+	var errs errors2.Errors
+	ok := false
+	for _, i := range d.instances {
+		if !i.IsNil() {
+			ret, err := classifier.Classify(i.Interface())
+			if ret {
+				ok = ret
+			}
+			if err != nil {
+				_ = errs.AddError(err)
+			}
+		}
+	}
+	if errs.Empty() {
+		return ok, nil
+	}
+	return ok, errs
 }
 
 type sliceDefinition struct {
@@ -356,6 +408,10 @@ func (d *sliceDefinition) Destroy() error {
 	return nil
 }
 
+func (d *sliceDefinition) Classify(classifier Classifier) (bool, error) {
+	return false, nil
+}
+
 type mapDefinition struct {
 	name string
 	o    interface{}
@@ -397,4 +453,8 @@ func (d *mapDefinition) AfterSet() error {
 
 func (d *mapDefinition) Destroy() error {
 	return nil
+}
+
+func (d *mapDefinition) Classify(classifier Classifier) (bool, error) {
+	return false, nil
 }

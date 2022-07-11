@@ -33,7 +33,8 @@ func (a *aImpl) Get() string {
 }
 
 type bImpl struct {
-	V string `fig:"userdata.value"`
+	V      string `fig:"userdata.value"`
+	custom string
 }
 
 func (b *bImpl) Get() string {
@@ -123,7 +124,7 @@ type injectBean struct {
 	B     a      `inject:"b"`
 	BS    *bImpl `inject:"b,omiterror"`
 	Bf    a      `inject:"c"`
-	Afunc a      `inject:"d"`
+	Afunc *bImpl `inject:"d"`
 }
 
 func (v *injectBean) validate() {
@@ -136,13 +137,16 @@ func (v *injectBean) validate() {
 	if v.BS.Get() != "this is a test" {
 		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
 	}
-	if v.Bf.Get() != "hello world" {
-		xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	if v.Bf.Get() != "this is a test" {
+		xlog.Fatalln("expect: 'this is a test' but get: ", v.BS.Get())
 	}
-	if v.Afunc.Get() != "0" {
-		xlog.Fatalln("expect: '0' but get: ", v.Afunc.Get())
+	//if v.Bf.Get() != "hello world" {
+	//	xlog.Fatalln("expect: 'hello world' but get: ", v.BS.Get())
+	//}
+	if v.Afunc.custom != "0" {
+		xlog.Fatalln("expect: '0' but get: ", v.Afunc.custom)
 	} else {
-		xlog.Infoln("Afunc: ", v.Afunc)
+		xlog.Infoln("Afunc: ", v.Afunc.custom)
 	}
 }
 
@@ -224,8 +228,8 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 		t.Fatal(err)
 	}
 
-	err = app.RegisterBeanByName("d", func(a *aImpl) a {
-		return &bImpl{V: a.v}
+	err = app.RegisterBeanByName("d", func(a *aImpl) *bImpl {
+		return &bImpl{custom: a.v}
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -238,6 +242,48 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 
 	go app.Run()
 	time.Sleep(2 * time.Second)
+}
+
+func TestAppCircleDependency(t *testing.T) {
+	app := neve.NewFileConfigApplication("assets/application-test.yaml")
+	type testT struct {
+		A *bImpl `inject:""`
+	}
+	err := app.RegisterBean(processor.NewValueProcessor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBean(&testProcessor{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := &testT{}
+	err = app.RegisterBean(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.RegisterBeanByName("", func(a *testT, b *bImpl) *bImpl {
+		return a.A
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		defer func() {
+			o := recover()
+			if o == nil {
+				t.Fatal("Must be panic Circular dependency")
+			} else {
+				t.Log(o)
+			}
+		}()
+		app.Run()
+	}()
+	time.Sleep(2 * time.Second)
+	if o.A != nil {
+		t.Fatal("expect nil but get ", o.A)
+	}
 }
 
 func TestValue(t *testing.T) {
@@ -301,7 +347,9 @@ func (p *testProcessor) Classify(o interface{}) (bool, error) {
 
 func (p *testProcessor) Process() error {
 	v := p.injectBean
-	v.validate()
+	if v != nil {
+		v.validate()
+	}
 	xlog.Infoln("all pass, exit")
 	os.Exit(0)
 	return nil
