@@ -8,13 +8,35 @@ package reflection
 import (
 	"errors"
 	"fmt"
-	"github.com/xfali/neve-utils/reflection"
 	"reflect"
 	"strings"
 )
 
 func GetTypeName(t reflect.Type) string {
-	return reflection.GetTypeName(t)
+	buf := strings.Builder{}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		buf.WriteString("*")
+	}
+
+	switch t.Kind() {
+	case reflect.Slice:
+		buf.WriteString(GetSliceName(t))
+		break
+	case reflect.Map:
+		buf.WriteString(GetMapName(t))
+		break
+	default:
+		name := t.PkgPath()
+		if name != "" {
+			buf.WriteString(strings.Replace(name, "/", ".", -1) + "." + t.Name())
+			break
+		} else {
+			buf.WriteString(t.Name())
+			break
+		}
+	}
+	return buf.String()
 }
 
 func GetSliceName(t reflect.Type) string {

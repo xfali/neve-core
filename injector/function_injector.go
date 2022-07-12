@@ -164,11 +164,16 @@ func (fi *defaultInjectFunctionHandler) addInvoker(invoker FunctionInjectInvoker
 // FIXME: This isn't a elegant implementation (but works well).
 func WrapBean(o interface{}, container bean.Container, injector Injector) (interface{}, error) {
 	if b, ok := o.(bean.CustomMethodBean); ok {
-		f, err := WrapBean(b.BeanFactory(), container, injector)
-		if err != nil {
-			return nil, err
+		fac := b.BeanFactory()
+		if reflect.TypeOf(fac).NumIn() > 0 {
+			f, err := WrapBean(fac, container, injector)
+			if err != nil {
+				return nil, err
+			}
+			return bean.NewCustomMethodBean(f, b.InitMethodName(), b.DestroyMethodName()), nil
+		} else {
+			return o, nil
 		}
-		return bean.NewCustomMethodBean(f, b.InitMethodName(), b.DestroyMethodName()), nil
 	}
 	ft := reflect.TypeOf(o)
 	if ft.Kind() != reflect.Func {

@@ -298,7 +298,7 @@ app.RegisterBeanByName("c", func() a {
     return &bImpl{V: "hello world"}
 })
 ```
-自版本 *v0.2.6.RELEASE* 开始已支持注册带参数的function，参数为该方法依赖的被neve管理的对象（已注册到neve）。
+自版本 *v0.2.7.RELEASE* 开始已支持注册带参数的function，参数为该方法依赖的被neve管理的对象（已注册到neve）。
 ```
 // 注意参数a *aImpl，在调用该方法获得对象实例时会自动注入已被neve管理的*aImpl实例。
 app.RegisterBeanByName("d", func(a *aImpl) a {
