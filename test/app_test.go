@@ -145,14 +145,15 @@ type testBean interface {
 }
 
 type injectBean struct {
-	A            a      `inject:""`
-	B            a      `inject:"b"`
-	BS           *bImpl `inject:"b,omiterror"`
-	Bf           a      `inject:"c"`
-	Afunc        *bImpl `inject:"d"`
-	Bfunc        *bImpl `inject:"e"`
-	CustomerBean *dImpl `inject:""`
-	Slice        []a    `inject:""`
+	A            a        `inject:""`
+	B            a        `inject:"b"`
+	BS           *bImpl   `inject:"b,omiterror"`
+	Bf           a        `inject:"c"`
+	Afunc        *bImpl   `inject:"d"`
+	Bfunc        *bImpl   `inject:"e"`
+	CustomerBean *dImpl   `inject:""`
+	Slice        []a      `inject:""`
+	Strings      []string `inject:""`
 }
 
 func (v *injectBean) validate() {
@@ -186,11 +187,23 @@ func (v *injectBean) validate() {
 	if v.CustomerBean.custom != "0" || v.CustomerBean.V != "this is a test" {
 		xlog.Fatalln("expect: '0' but get: ", v.CustomerBean.custom)
 	} else {
-		xlog.Infoln("Bfunc: ", v.CustomerBean.custom)
+		xlog.Infoln("CustomerBean: ", v.CustomerBean.custom)
 	}
 
 	if len(v.Slice) == 0 {
 		xlog.Fatalln("expect larger than 0, but get ", len(v.Slice))
+	} else {
+		for _, a := range v.Slice {
+			xlog.Infoln(a.Get())
+		}
+	}
+
+	if len(v.Strings) == 0 {
+		xlog.Fatalln("expect larger than 0, but get ", len(v.Strings))
+	} else {
+		for _, a := range v.Strings {
+			xlog.Infoln(a)
+		}
 	}
 }
 
@@ -287,6 +300,11 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	err = app.RegisterBean(bean.NewCustomMethodBean(func(a *aImpl) *dImpl {
 		return &dImpl{custom: a.v}
 	}, "DoInit", "DoDestroy"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBean([]string{"hello", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}

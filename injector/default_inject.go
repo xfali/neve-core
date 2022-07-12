@@ -9,8 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/xfali/neve-core/bean"
-	reflection2 "github.com/xfali/neve-core/reflection"
-	"github.com/xfali/neve-utils/reflection"
+	"github.com/xfali/neve-core/reflection"
 	reflectx "github.com/xfali/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
@@ -188,7 +187,7 @@ func (injector *defaultInjector) injectInterface(c bean.Container, name string, 
 func (injector *defaultInjector) injectSlice(c bean.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
-		name = reflection2.GetSliceName(vt)
+		name = reflection.GetSliceName(vt)
 	}
 	elemType := vt.Elem()
 	o, ok := c.GetDefinition(name)
@@ -213,20 +212,20 @@ func (injector *defaultInjector) injectSlice(c bean.Container, name string, v re
 			if err != nil {
 				injector.logger.Warnln(err)
 			}
-			err = c.PutDefinition(reflection2.GetSliceName(vt), bean)
+			err = c.PutDefinition(reflection.GetSliceName(vt), bean)
 			if err != nil {
 				injector.logger.Warnln(err)
 			}
 			return nil
 		}
 	}
-	return errors.New("Slice Inject nothing, cannot find any Implementation: " + reflection2.GetSliceName(vt))
+	return errors.New("Slice Inject nothing, cannot find any Implementation: " + reflection.GetSliceName(vt))
 }
 
 func (injector *defaultInjector) injectMap(c bean.Container, name string, v reflect.Value) error {
 	vt := v.Type()
 	if name == "" {
-		name = reflection2.GetMapName(vt)
+		name = reflection.GetMapName(vt)
 	}
 	keyType := vt.Key()
 	elemType := vt.Elem()
@@ -254,14 +253,14 @@ func (injector *defaultInjector) injectMap(c bean.Container, name string, v refl
 			if err != nil {
 				injector.logger.Warnln(err)
 			}
-			err = c.PutDefinition(reflection2.GetMapName(vt), bean)
+			err = c.PutDefinition(reflection.GetMapName(vt), bean)
 			if err != nil {
 				injector.logger.Warnln(err)
 			}
 			return nil
 		}
 	}
-	return errors.New("Map Inject nothing, cannot find any Implementation: " + reflection2.GetMapName(vt))
+	return errors.New("Map Inject nothing, cannot find any Implementation: " + reflection.GetMapName(vt))
 }
 
 func (injector *defaultInjector) injectStruct(c bean.Container, name string, v reflect.Value) error {

@@ -8,9 +8,14 @@ package reflection
 import (
 	"errors"
 	"fmt"
+	"github.com/xfali/neve-utils/reflection"
 	"reflect"
 	"strings"
 )
+
+func GetTypeName(t reflect.Type) string {
+	return reflection.GetTypeName(t)
+}
 
 func GetSliceName(t reflect.Type) string {
 	elemType := t.Elem()
@@ -18,8 +23,10 @@ func GetSliceName(t reflect.Type) string {
 	name := elemType.PkgPath()
 	if name != "" {
 		name = strings.Replace(name, "/", ".", -1) + "." + elemType.Name()
+		return "[]" + name
+	} else {
+		return t.String()
 	}
-	return "[]" + name
 }
 
 func GetMapName(t reflect.Type) string {
@@ -34,8 +41,10 @@ func GetMapName(t reflect.Type) string {
 	name := elemType.PkgPath()
 	if name != "" {
 		name = strings.Replace(name, "/", ".", -1) + "." + elemType.Name()
+		return fmt.Sprintf("map[%s]%s", key, name)
+	} else {
+		return t.String()
 	}
-	return fmt.Sprintf("map[%s]%s", key, name)
 }
 
 func SmartCopySlice(dest, src reflect.Value) error {

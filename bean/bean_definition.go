@@ -9,8 +9,7 @@ import (
 	"errors"
 	"fmt"
 	errors2 "github.com/xfali/neve-core/errors"
-	reflection2 "github.com/xfali/neve-core/reflection"
-	"github.com/xfali/neve-utils/reflection"
+	"github.com/xfali/neve-core/reflection"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -88,7 +87,7 @@ func CreateBeanDefinition(o interface{}) (Definition, error) {
 	t := reflect.TypeOf(o)
 	creator, ok := beanDefinitionCreators[t.Kind()]
 	if !ok || creator == nil {
-		return nil, errors.New("Cannot handle this type: " + reflection.GetTypeName(t))
+		return nil, fmt.Errorf("Cannot handle this type: %s" + t.String())
 	}
 
 	return creator(o)
@@ -552,7 +551,7 @@ type sliceDefinition struct {
 func newSliceDefinition(o interface{}) (Definition, error) {
 	t := reflect.TypeOf(o)
 	return &sliceDefinition{
-		name: reflection2.GetSliceName(t),
+		name: reflection.GetSliceName(t),
 		o:    o,
 		t:    t,
 	}, nil
@@ -599,7 +598,7 @@ type mapDefinition struct {
 func newMapDefinition(o interface{}) (Definition, error) {
 	t := reflect.TypeOf(o)
 	return &mapDefinition{
-		name: reflection2.GetMapName(t),
+		name: reflection.GetMapName(t),
 		o:    o,
 		t:    t,
 	}, nil

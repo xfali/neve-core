@@ -8,7 +8,7 @@ package bean
 import (
 	"errors"
 	"github.com/xfali/goutils/container/skiplist"
-	"github.com/xfali/neve-utils/reflection"
+	"github.com/xfali/neve-core/reflection"
 	"reflect"
 	"sync"
 )
@@ -168,11 +168,6 @@ func (c *defaultContainer) RegisterByName(name string, o interface{}, opts ...Re
 	if name == "" {
 		// name = reflection.GetObjectName(o)
 		name = beanDefinition.Name()
-		// func
-		if name == "" {
-			//name = beanDefinition.Name()
-			name = reflection.GetObjectName(o)
-		}
 		if name == "" {
 			return errors.New("Cannot get bean name. ")
 		}

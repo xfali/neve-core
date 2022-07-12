@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/xfali/neve-core/bean"
-	"github.com/xfali/neve-utils/reflection"
+	"github.com/xfali/neve-core/reflection"
 	"github.com/xfali/xlog"
 	"reflect"
 	"sync"
