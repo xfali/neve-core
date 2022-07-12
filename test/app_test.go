@@ -66,6 +66,24 @@ type c struct {
 	I int    `value:"userdata.test"`
 }
 
+type dImpl struct {
+	V      string `fig:"userdata.value"`
+	custom string
+}
+
+func (b *dImpl) DoInit() error {
+	xlog.Infoln("dImpl DoInit set, V: ", b.V)
+	if b.V != "this is a test" {
+		xlog.Fatalln("b.V not inject")
+	}
+	return nil
+}
+
+func (b *dImpl) DoDestroy() error {
+	xlog.Infoln("dImpl DoInit")
+	return nil
+}
+
 type order1 struct {
 	t *testing.T
 	s string
@@ -127,12 +145,14 @@ type testBean interface {
 }
 
 type injectBean struct {
-	A     a      `inject:""`
-	B     a      `inject:"b"`
-	BS    *bImpl `inject:"b,omiterror"`
-	Bf    a      `inject:"c"`
-	Afunc *bImpl `inject:"d"`
-	Bfunc *bImpl `inject:"e"`
+	A            a      `inject:""`
+	B            a      `inject:"b"`
+	BS           *bImpl `inject:"b,omiterror"`
+	Bf           a      `inject:"c"`
+	Afunc        *bImpl `inject:"d"`
+	Bfunc        *bImpl `inject:"e"`
+	CustomerBean *dImpl `inject:""`
+	Slice        []a    `inject:""`
 }
 
 func (v *injectBean) validate() {
@@ -161,6 +181,16 @@ func (v *injectBean) validate() {
 		xlog.Fatalln("expect: '0' but get: ", v.Bfunc.custom)
 	} else {
 		xlog.Infoln("Bfunc: ", v.Bfunc.custom)
+	}
+
+	if v.CustomerBean.custom != "0" || v.CustomerBean.V != "this is a test" {
+		xlog.Fatalln("expect: '0' but get: ", v.CustomerBean.custom)
+	} else {
+		xlog.Infoln("Bfunc: ", v.CustomerBean.custom)
+	}
+
+	if len(v.Slice) == 0 {
+		xlog.Fatalln("expect larger than 0, but get ", len(v.Slice))
 	}
 }
 
@@ -250,6 +280,13 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	}
 
 	err = app.RegisterBeanByName("e", testTmp{}.t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBean(bean.NewCustomMethodBean(func(a *aImpl) *dImpl {
+		return &dImpl{custom: a.v}
+	}, "DoInit", "DoDestroy"))
 	if err != nil {
 		t.Fatal(err)
 	}

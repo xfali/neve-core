@@ -166,10 +166,12 @@ func (c *defaultContainer) RegisterByName(name string, o interface{}, opts ...Re
 	}
 
 	if name == "" {
-		name = reflection.GetObjectName(o)
+		// name = reflection.GetObjectName(o)
+		name = beanDefinition.Name()
 		// func
 		if name == "" {
-			name = beanDefinition.Name()
+			//name = beanDefinition.Name()
+			name = reflection.GetObjectName(o)
 		}
 		if name == "" {
 			return errors.New("Cannot get bean name. ")

@@ -63,6 +63,7 @@ type DefinitionCreator func(o interface{}) (Definition, error)
 var (
 	InitializingType       = reflect.TypeOf((*Initializing)(nil)).Elem()
 	DisposableType         = reflect.TypeOf((*Disposable)(nil)).Elem()
+	ErrorType              = reflect.TypeOf((*error)(nil)).Elem()
 	beanDefinitionCreators = map[reflect.Kind]DefinitionCreator{
 		reflect.Ptr:   newObjectDefinition,
 		reflect.Func:  newFunctionExDefinition,
@@ -80,8 +81,11 @@ func RegisterBeanDefinitionCreator(kind reflect.Kind, creator DefinitionCreator)
 }
 
 func CreateBeanDefinition(o interface{}) (Definition, error) {
-	t := reflect.TypeOf(o)
+	if v, ok := o.(CustomMethodBean); ok {
+		return newCustomMethodBeanDefinition(v)
+	}
 
+	t := reflect.TypeOf(o)
 	creator, ok := beanDefinitionCreators[t.Kind()]
 	if !ok || creator == nil {
 		return nil, errors.New("Cannot handle this type: " + reflection.GetTypeName(t))
@@ -228,6 +232,172 @@ const (
 	functionDefinitionInjecting
 )
 
+type CustomMethodBean interface {
+	// 返回或者创建bean的方法
+	// 该方法可能包含一个或者多个参数，参数会在实例化时自动注入
+	// 该方法只能有一个返回值，返回的值将被注入到依赖该类型值的对象中
+	BeanFactory() interface{}
+
+	// BeanFactory返回值包含的初始化方法名，可为空
+	InitMethodName() string
+
+	// BeanFactory返回值包含的销毁方法名，可为空
+	DestroyMethodName() string
+}
+
+type defaultCustomMethodBean struct {
+	beanFunc      interface{}
+	initMethod    string
+	destroyMethod string
+}
+
+func NewCustomMethodBean(beanFunc interface{}, initMethod, destoryMethod string) *defaultCustomMethodBean {
+	ft := reflect.TypeOf(beanFunc)
+	if err := verifyBeanFunctionEx(ft); err != nil {
+		panic(fmt.Errorf("NewCustomMethodBean with a invalid function type: %s", ft.String()))
+	}
+	return &defaultCustomMethodBean{
+		beanFunc:      beanFunc,
+		initMethod:    initMethod,
+		destroyMethod: destoryMethod,
+	}
+}
+
+func (b *defaultCustomMethodBean) BeanFactory() interface{} {
+	return b.beanFunc
+}
+
+func (b *defaultCustomMethodBean) InitMethodName() string {
+	return b.initMethod
+}
+
+func (b *defaultCustomMethodBean) DestroyMethodName() string {
+	return b.destroyMethod
+}
+
+type customMethodBeanDefinition struct {
+	functionExDefinition
+	initializingFuncName string
+	disposableFuncName   string
+}
+
+func newCustomMethodBeanDefinition(b CustomMethodBean) (Definition, error) {
+	d, err := newFunctionExDefinition(b.BeanFactory())
+	if err != nil {
+		return nil, err
+	}
+	ret := &customMethodBeanDefinition{
+		functionExDefinition: *d.(*functionExDefinition),
+		initializingFuncName: b.InitMethodName(),
+		disposableFuncName:   b.DestroyMethodName(),
+	}
+
+	return ret, ret.verifyCustomBeanFunction()
+}
+
+func checkPublic(name string) bool {
+	return name[0] >= 'A' && name[0] <= 'Z'
+}
+
+func (d *customMethodBeanDefinition) verifyCustomBeanFunction() error {
+	rt := d.t
+	if d.initializingFuncName != "" {
+		if !checkPublic(d.initializingFuncName) {
+			return fmt.Errorf("Type %s init method %s is private ", reflection.GetTypeName(d.t), d.initializingFuncName)
+		}
+		m, ok := rt.MethodByName(d.initializingFuncName)
+		if !ok {
+			return fmt.Errorf("Type %s init method %s not found ", reflection.GetTypeName(d.t), d.initializingFuncName)
+		} else {
+			if m.Type.NumIn() == 0 {
+				return fmt.Errorf("Type %s init method %s cannot with params ", reflection.GetTypeName(d.t), d.initializingFuncName)
+			}
+		}
+	}
+
+	if d.disposableFuncName != "" {
+		if !checkPublic(d.initializingFuncName) {
+			return fmt.Errorf("Type %s destroy method %s is private ", reflection.GetTypeName(d.t), d.initializingFuncName)
+		}
+		m, ok := rt.MethodByName(d.disposableFuncName)
+		if !ok {
+			return fmt.Errorf("Type %s destroy method %s not found ", reflection.GetTypeName(d.t), d.disposableFuncName)
+		} else {
+			if m.Type.NumIn() == 0 {
+				return fmt.Errorf("Type %s destroy method %s cannot with params ", reflection.GetTypeName(d.t), d.disposableFuncName)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (d *customMethodBeanDefinition) callByName(value reflect.Value, name string) error {
+	m := value.MethodByName(name)
+	if m.IsValid() && !m.IsNil() {
+		// validate function must before newCustomMethodBeanDefinition!
+		rets := m.Call(nil)
+		for i := len(rets) - 1; i >= 0; i-- {
+			ret := rets[i]
+			if ret.IsValid() && ret.Type().Implements(ErrorType) {
+				if !ret.IsNil() {
+					return rets[i].Interface().(error)
+				}
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("%s method %s is invalid", reflection.GetTypeName(value.Type()), d.initializingFuncName)
+}
+
+func (d *customMethodBeanDefinition) AfterSet() error {
+	if d.initializingFuncName == "" {
+		return nil
+	}
+	if atomic.CompareAndSwapInt32(&d.initOnce, 0, 1) {
+		d.instanceLock.RLock()
+		defer d.instanceLock.RUnlock()
+		var errs errors2.Errors
+		for _, i := range d.instances {
+			if i.IsValid() && !i.IsNil() {
+				err := d.callByName(i, d.initializingFuncName)
+				if err != nil {
+					_ = errs.AddError(err)
+				}
+			}
+		}
+		if errs.Empty() {
+			return nil
+		}
+		return errs
+	}
+	return nil
+}
+
+func (d *customMethodBeanDefinition) Destroy() error {
+	if d.disposableFuncName == "" {
+		return nil
+	}
+	if atomic.CompareAndSwapInt32(&d.destroyOnce, 0, 1) {
+		d.instanceLock.RLock()
+		defer d.instanceLock.RUnlock()
+		var errs errors2.Errors
+		for _, i := range d.instances {
+			if i.IsValid() && !i.IsNil() {
+				err := d.callByName(i, d.disposableFuncName)
+				if err != nil {
+					_ = errs.AddError(err)
+				}
+			}
+		}
+		if errs.Empty() {
+			return nil
+		}
+		return errs
+	}
+	return nil
+}
+
 type functionExDefinition struct {
 	name   string
 	o      interface{}
@@ -237,6 +407,8 @@ type functionExDefinition struct {
 
 	instances    []reflect.Value
 	instanceLock sync.RWMutex
+	initOnce     int32
+	destroyOnce  int32
 }
 
 func verifyBeanFunctionEx(ft reflect.Type) error {
@@ -304,43 +476,49 @@ func (d *functionExDefinition) IsObject() bool {
 }
 
 func (d *functionExDefinition) AfterSet() error {
-	d.instanceLock.RLock()
-	defer d.instanceLock.RUnlock()
-	var errs errors2.Errors
-	for _, i := range d.instances {
-		if !i.IsNil() {
-			if v, ok := i.Interface().(Initializing); ok {
-				err := v.BeanAfterSet()
-				if err != nil {
-					_ = errs.AddError(err)
+	if atomic.CompareAndSwapInt32(&d.initOnce, 0, 1) {
+		d.instanceLock.RLock()
+		defer d.instanceLock.RUnlock()
+		var errs errors2.Errors
+		for _, i := range d.instances {
+			if !i.IsNil() {
+				if v, ok := i.Interface().(Initializing); ok {
+					err := v.BeanAfterSet()
+					if err != nil {
+						_ = errs.AddError(err)
+					}
 				}
 			}
 		}
+		if errs.Empty() {
+			return nil
+		}
+		return errs
 	}
-	if errs.Empty() {
-		return nil
-	}
-	return errs
+	return nil
 }
 
 func (d *functionExDefinition) Destroy() error {
-	d.instanceLock.RLock()
-	defer d.instanceLock.RUnlock()
-	var errs errors2.Errors
-	for _, i := range d.instances {
-		if !i.IsNil() {
-			if v, ok := i.Interface().(Disposable); ok {
-				err := v.BeanDestroy()
-				if err != nil {
-					_ = errs.AddError(err)
+	if atomic.CompareAndSwapInt32(&d.destroyOnce, 0, 1) {
+		d.instanceLock.RLock()
+		defer d.instanceLock.RUnlock()
+		var errs errors2.Errors
+		for _, i := range d.instances {
+			if !i.IsNil() {
+				if v, ok := i.Interface().(Disposable); ok {
+					err := v.BeanDestroy()
+					if err != nil {
+						_ = errs.AddError(err)
+					}
 				}
 			}
 		}
+		if errs.Empty() {
+			return nil
+		}
+		return errs
 	}
-	if errs.Empty() {
-		return nil
-	}
-	return errs
+	return nil
 }
 
 func (d *functionExDefinition) Classify(classifier Classifier) (bool, error) {
