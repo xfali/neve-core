@@ -82,6 +82,14 @@ type dImpl struct {
 	custom string
 }
 
+func (b *dImpl) BeanAfterSet() error {
+	xlog.Infoln("dImpl BeanAfterSet set, V: ", b.V)
+	if b.V != "this is a test" {
+		xlog.Fatalln("b.V not inject")
+	}
+	return nil
+}
+
 func (b *dImpl) DoInit() error {
 	xlog.Infoln("dImpl DoInit set, V: ", b.V)
 	if b.V != "this is a test" {
@@ -163,6 +171,8 @@ type injectBean struct {
 	Afunc        *bImpl   `inject:"d"`
 	Bfunc        *bImpl   `inject:"e"`
 	CustomerBean *dImpl   `inject:""`
+	CBwithName   *dImpl   `inject:"xx"`
+	CBwithName2  *dImpl   `inject:"xx"`
 	Slice        []a      `inject:""`
 	Strings      []string `inject:""`
 }
@@ -199,6 +209,18 @@ func (v *injectBean) validate() {
 		xlog.Fatalln("expect: '0' but get: ", v.CustomerBean.custom)
 	} else {
 		xlog.Infoln("CustomerBean: ", v.CustomerBean.custom)
+	}
+
+	if v.CBwithName.custom != "x value" || v.CBwithName.V != "this is a test" {
+		xlog.Fatalln("expect: 'x value' but get: ", v.CBwithName.custom)
+	} else {
+		xlog.Infoln("CBwithName: ", v.CBwithName.custom)
+	}
+
+	if v.CBwithName != v.CBwithName2 {
+		xlog.Fatalf("expect: CBwithName %p equal CBwithName2 %p but not", v.CBwithName, v.CBwithName2)
+	} else {
+		xlog.Infof("CBwithName: %p  CBwithName2 %p", v.CBwithName, v.CBwithName2)
 	}
 
 	if len(v.Slice) == 0 {
@@ -288,6 +310,10 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = app.RegisterBeanByName("x", &aImpl{v: "x value"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	// 注意，此处如果使用RegisterBean会使用a的类型名称注册构造方法
 	err = app.RegisterBeanByName("c", func() a {
 		return &bImpl{V: "hello world"}
@@ -308,9 +334,17 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 		t.Fatal(err)
 	}
 
-	err = app.RegisterBean(bean.NewCustomMethodBean(func(a *aImpl) *dImpl {
+	err = app.RegisterBean(bean.NewCustomBeanFactory(func(a *aImpl) *dImpl {
 		return &dImpl{custom: a.v}
 	}, "DoInit", "DoDestroy"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Singleton
+	err = app.RegisterBeanByName("xx", bean.NewCustomBeanFactoryWithName(bean.SingletonFactory(func(a a) *dImpl {
+		return &dImpl{custom: a.Get()}
+	}), []string{"x"}, "", ""))
 	if err != nil {
 		t.Fatal(err)
 	}

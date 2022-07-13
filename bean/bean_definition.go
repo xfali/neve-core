@@ -18,10 +18,7 @@ package bean
 
 import (
 	"fmt"
-	errors2 "github.com/xfali/neve-core/errors"
-	"github.com/xfali/neve-core/reflection"
 	"reflect"
-	"sync/atomic"
 )
 
 type Classifier interface {
@@ -81,7 +78,7 @@ func RegisterBeanDefinitionCreator(kind reflect.Kind, creator DefinitionCreator)
 }
 
 func CreateBeanDefinition(o interface{}) (Definition, error) {
-	if v, ok := o.(CustomMethodBean); ok {
+	if v, ok := o.(CustomBeanFactory); ok {
 		return newCustomMethodBeanDefinition(v)
 	}
 

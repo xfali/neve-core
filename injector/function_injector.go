@@ -24,7 +24,6 @@ import (
 	"github.com/xfali/xlog"
 	"reflect"
 	"sync"
-	"sync/atomic"
 )
 
 type defaultInjectInvoker struct {
@@ -174,88 +173,27 @@ func (fi *defaultInjectFunctionHandler) addInvoker(invoker FunctionInjectInvoker
 
 // FIXME: This isn't a elegant implementation (but works well).
 func WrapBean(o interface{}, container bean.Container, injector Injector) (interface{}, error) {
-	if b, ok := o.(bean.CustomMethodBean); ok {
+	// 如果是CustomBeanFactory则需要将创建bean方法的参数自动代理注入，变为无参数仅返回的创建方法
+	if b, ok := o.(bean.CustomBeanFactory); ok {
 		fac := b.BeanFactory()
 		if reflect.TypeOf(fac).NumIn() > 0 {
-			f, err := WrapBean(fac, container, injector)
-			if err != nil {
-				return nil, err
+			names := b.InjectNames()
+			if len(names) > 0 {
+				f, err := WrapBeanFactoryByNameFunc(fac, names, container, injector)
+				if err != nil {
+					return nil, err
+				}
+				return bean.NewCustomBeanFactory(f, b.InitMethodName(), b.DestroyMethodName()), nil
+			} else {
+				f, err := WrapBeanFactoryFunc(fac, container, injector)
+				if err != nil {
+					return nil, err
+				}
+				return bean.NewCustomBeanFactory(f, b.InitMethodName(), b.DestroyMethodName()), nil
 			}
-			return bean.NewCustomMethodBean(f, b.InitMethodName(), b.DestroyMethodName()), nil
 		} else {
 			return o, nil
 		}
 	}
-	ft := reflect.TypeOf(o)
-	if ft.Kind() != reflect.Func {
-		return o, nil
-	}
-	if ft.NumOut() != 1 {
-		return o, nil
-	}
-
-	rt := ft.Out(0)
-	if rt.Kind() != reflect.Ptr && rt.Kind() != reflect.Interface {
-		return o, errors.New("Bean function 1st return value must be pointer or interface. ")
-	}
-	pn := ft.NumIn()
-	if pn > 0 {
-		retFv := reflect.MakeFunc(reflect.FuncOf(nil, []reflect.Type{rt}, false), func(args []reflect.Value) (results []reflect.Value) {
-			fv := reflect.ValueOf(o)
-			values := make([]reflect.Value, pn)
-			for i := 0; i < pn; i++ {
-				o := reflect.New(ft.In(i)).Elem()
-				name := ""
-				err := injector.InjectValue(container, name, o)
-				if err != nil {
-					err = fmt.Errorf("Inject function [%s] failed:error: %s\n", ft.Name(), err.Error())
-					panic(err)
-				}
-				values[i] = o
-			}
-
-			return fv.Call(values)
-		})
-		return retFv.Interface(), nil
-	}
-	return o, nil
-}
-
-type singletonFunction struct {
-	once int32
-	f    interface{}
-
-	ret []reflect.Value
-}
-
-func (f *singletonFunction) get() interface{} {
-	ft := reflect.TypeOf(f.f)
-	if ft.Kind() != reflect.Func {
-		panic("Origin interface is not a function. ")
-	}
-	if ft.NumOut() != 1 {
-		panic("Origin interface without return value. ")
-	}
-
-	rt := ft.Out(0)
-	if rt.Kind() != reflect.Ptr && rt.Kind() != reflect.Interface {
-		panic("Bean function 1st return value must be pointer or interface. ")
-	}
-
-	retFv := reflect.MakeFunc(ft, func(args []reflect.Value) (results []reflect.Value) {
-		if atomic.CompareAndSwapInt32(&f.once, 0, 1) {
-			fv := reflect.ValueOf(f.f)
-			f.ret = fv.Call(args)
-		}
-		return f.ret
-	})
-	return retFv.Interface()
-}
-
-func Singleton(function interface{}) interface{} {
-	s := singletonFunction{
-		f:    function,
-		once: 0,
-	}
-	return s.get()
+	return WrapBeanFactoryFunc(o, container, injector)
 }
