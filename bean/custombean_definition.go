@@ -173,16 +173,15 @@ func (d *customMethodBeanDefinition) AfterSet() error {
 		d.instanceLock.RLock()
 		defer d.instanceLock.RUnlock()
 		var errs errors.Errors
-		for _, i := range d.instances {
+		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
-				if d.initializingFuncName == "" {
-					if d.t.Implements(InitializingType) {
-						err := i.Interface().(Initializing).BeanAfterSet()
-						if err != nil {
-							_ = errs.AddError(err)
-						}
+				if d.t.Implements(InitializingType) {
+					err := i.Interface().(Initializing).BeanAfterSet()
+					if err != nil {
+						_ = errs.AddError(err)
 					}
-				} else {
+				}
+				if d.initializingFuncName != "" {
 					err := d.callByName(i, d.initializingFuncName)
 					if err != nil {
 						_ = errs.AddError(err)
@@ -203,17 +202,16 @@ func (d *customMethodBeanDefinition) Destroy() error {
 		d.instanceLock.RLock()
 		defer d.instanceLock.RUnlock()
 		var errs errors.Errors
-		for _, i := range d.instances {
+		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
-				if d.disposableFuncName == "" {
-					if d.t.Implements(DisposableType) {
-						err := i.Interface().(Disposable).BeanDestroy()
-						if err != nil {
-							_ = errs.AddError(err)
-						}
-					}
-				} else {
+				if d.disposableFuncName != "" {
 					err := d.callByName(i, d.disposableFuncName)
+					if err != nil {
+						_ = errs.AddError(err)
+					}
+				}
+				if d.t.Implements(DisposableType) {
+					err := i.Interface().(Disposable).BeanDestroy()
 					if err != nil {
 						_ = errs.AddError(err)
 					}

@@ -31,6 +31,11 @@ const (
 	functionDefinitionInjecting
 )
 
+var (
+	DummyType  = reflect.TypeOf((*struct{})(nil)).Elem()
+	DummyValue = reflect.ValueOf(struct{}{})
+)
+
 type functionExDefinition struct {
 	name   string
 	o      interface{}
@@ -38,7 +43,7 @@ type functionExDefinition struct {
 	t      reflect.Type
 	status int32
 
-	instances    []reflect.Value
+	instances    reflect.Value
 	instanceLock sync.RWMutex
 	initOnce     int32
 	destroyOnce  int32
@@ -69,10 +74,11 @@ func newFunctionExDefinition(o interface{}) (Definition, error) {
 	ot := ft.Out(0)
 	fn := reflect.ValueOf(o)
 	ret := &functionExDefinition{
-		o:    o,
-		name: reflection.GetTypeName(ot),
-		fn:   fn,
-		t:    ot,
+		o:         o,
+		name:      reflection.GetTypeName(ot),
+		fn:        fn,
+		t:         ot,
+		instances: reflect.MakeMap(reflect.MapOf(ot, DummyType)),
 	}
 	return ret, nil
 }
@@ -92,7 +98,7 @@ func (d *functionExDefinition) Value() reflect.Value {
 		if v.IsValid() {
 			d.instanceLock.Lock()
 			defer d.instanceLock.Unlock()
-			d.instances = append(d.instances, v)
+			d.instances.SetMapIndex(v, DummyValue)
 		}
 		return v
 	} else {
@@ -113,7 +119,8 @@ func (d *functionExDefinition) AfterSet() error {
 		d.instanceLock.RLock()
 		defer d.instanceLock.RUnlock()
 		var errs errors2.Errors
-		for _, i := range d.instances {
+
+		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
 				if v, ok := i.Interface().(Initializing); ok {
 					err := v.BeanAfterSet()
@@ -136,7 +143,7 @@ func (d *functionExDefinition) Destroy() error {
 		d.instanceLock.RLock()
 		defer d.instanceLock.RUnlock()
 		var errs errors2.Errors
-		for _, i := range d.instances {
+		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
 				if v, ok := i.Interface().(Disposable); ok {
 					err := v.BeanDestroy()
@@ -159,7 +166,7 @@ func (d *functionExDefinition) Classify(classifier Classifier) (bool, error) {
 	defer d.instanceLock.RUnlock()
 	var errs errors2.Errors
 	ok := false
-	for _, i := range d.instances {
+	for _, i := range d.instances.MapKeys() {
 		if !i.IsNil() {
 			ret, err := classifier.Classify(i.Interface())
 			if ret {
@@ -246,4 +253,3 @@ func (d *functionDefinition) Destroy() error {
 func (d *functionDefinition) Classify(classifier Classifier) (bool, error) {
 	return false, nil
 }
-

@@ -83,7 +83,7 @@ type dImpl struct {
 }
 
 func (b *dImpl) BeanAfterSet() error {
-	xlog.Infoln("dImpl BeanAfterSet set, V: ", b.V)
+	xlog.Infof("dImpl BeanAfterSet set, V: %v %p", b.V, b)
 	if b.V != "this is a test" {
 		xlog.Fatalln("b.V not inject")
 	}
@@ -91,7 +91,7 @@ func (b *dImpl) BeanAfterSet() error {
 }
 
 func (b *dImpl) DoInit() error {
-	xlog.Infoln("dImpl DoInit set, V: ", b.V)
+	xlog.Infoln("dImpl DoInit set, V: %v %p", b.V, b)
 	if b.V != "this is a test" {
 		xlog.Fatalln("b.V not inject")
 	}
@@ -360,7 +360,7 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	}
 
 	go app.Run()
-	time.Sleep(2 * time.Second)
+	time.Sleep(2 * time.Minute)
 }
 
 func TestAppCircleDependency(t *testing.T) {
