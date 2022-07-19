@@ -51,16 +51,17 @@ func (a *aImpl) Get() string {
 }
 
 type bImpl struct {
-	V      string `fig:"userdata.value"`
-	custom string
+	V       string `fig:"userdata.value"`
+	custom  string
+	Payload interface{}
 }
 
-func (b *bImpl) Get() string {
+func (b bImpl) Get() string {
 	return b.V
 }
 
 func (b *bImpl) BeanAfterSet() error {
-	xlog.Infoln("bImpl set, V: ", b.V)
+	xlog.Infof("bImpl set, V: %s custom: %s payload: %v\n", b.V, b.custom, b.Payload)
 	if b.V != "this is a test" {
 		xlog.Fatalln("b.V not inject")
 	}
@@ -91,7 +92,7 @@ func (b *dImpl) BeanAfterSet() error {
 }
 
 func (b *dImpl) DoInit() error {
-	xlog.Infoln("dImpl DoInit set, V: %v %p", b.V, b)
+	xlog.Infof("dImpl DoInit set, V: %v %p\n", b.V, b)
 	if b.V != "this is a test" {
 		xlog.Fatalln("b.V not inject")
 	}
@@ -175,6 +176,8 @@ type injectBean struct {
 	CBwithName2  *dImpl   `inject:"xx"`
 	Slice        []a      `inject:""`
 	Strings      []string `inject:""`
+	Struct1      a        `inject:"struct1"`
+	Struct2      a        `inject:"struct2"`
 }
 
 func (v *injectBean) validate() {
@@ -238,6 +241,8 @@ func (v *injectBean) validate() {
 			xlog.Infoln(a)
 		}
 	}
+
+	xlog.Infoln(v.Struct1, v.Struct2)
 }
 
 type injectBeanB struct {
@@ -324,6 +329,20 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 
 	err = app.RegisterBeanByName("d", func(a *aImpl) *bImpl {
 		return &bImpl{custom: a.v}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBeanByName("struct1", func() a {
+		return bImpl{Payload: "this is struct 1"}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBeanByName("struct2", func() a {
+		return bImpl{Payload: "this is struct 2"}
 	})
 	if err != nil {
 		t.Fatal(err)
