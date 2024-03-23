@@ -51,11 +51,17 @@ type Listener interface {
 	OnInjectFailed(err error)
 }
 
-// 监听管理器
+// 监听管理者
 type ListenerManager interface {
 	// 添加监听器
 	AddListener(name string, listener Listener)
 
 	// 从传入字串中解析注入名称和匹配监听器
 	ParseListener(v string) (name string, listeners []Listener)
+}
+
+// 监听管理者设置器
+type ListenerManagerSetter interface {
+	// 设置监听管理者
+	SetListenerManager(manager ListenerManager)
 }

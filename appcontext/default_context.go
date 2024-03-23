@@ -39,12 +39,13 @@ const (
 type Opt func(*defaultApplicationContext)
 
 type defaultApplicationContext struct {
-	config      fig.Properties
-	logger      xlog.Logger
-	container   bean.Container
-	injector    injector.Injector
-	funcHandler injector.InjectFunctionHandler
-	eventProc   ApplicationEventProcessor
+	config       fig.Properties
+	logger       xlog.Logger
+	container    bean.Container
+	injector     injector.Injector
+	funcHandler  injector.InjectFunctionHandler
+	injectLicMgr injector.ListenerManager
+	eventProc    ApplicationEventProcessor
 
 	ctxAwares    []ApplicationContextAware
 	ctxAwareLock sync.Mutex
@@ -68,13 +69,20 @@ func NewDefaultApplicationContext(opts ...Opt) *defaultApplicationContext {
 
 		curState: statusNone,
 	}
-	ret.injector = injector.New(injector.OptSetLogger(ret.logger))
-	ret.funcHandler = injector.NewDefaultInjectFunctionHandler(ret.logger)
+	ret.injectLicMgr = injector.NewListenerManager(ret.logger)
+	ret.injector = injector.New(injector.OptSetLogger(ret.logger), injector.OptSetListenerManager(ret.injectLicMgr))
+	ret.funcHandler = injector.NewDefaultInjectFunctionHandler(ret.logger, ret.injectLicMgr)
 
 	for _, opt := range opts {
 		opt(ret)
 	}
 
+	if setter, ok := ret.injector.(injector.ListenerManagerSetter); ok {
+		setter.SetListenerManager(ret.injectLicMgr)
+	}
+	if setter, ok := ret.funcHandler.(injector.ListenerManagerSetter); ok {
+		setter.SetListenerManager(ret.injectLicMgr)
+	}
 	ret.funcHandler.SetInjector(ret.injector)
 
 	return ret
@@ -89,6 +97,12 @@ func OptSetContainer(container bean.Container) Opt {
 func OptSetLogger(logger xlog.Logger) Opt {
 	return func(context *defaultApplicationContext) {
 		context.logger = logger
+	}
+}
+
+func OptSetInjectListenerManager(manager injector.ListenerManager) Opt {
+	return func(context *defaultApplicationContext) {
+		context.injectLicMgr = manager
 	}
 }
 
@@ -171,7 +185,7 @@ func (ctx *defaultApplicationContext) RegisterBeanByName(name string, o interfac
 		return nil
 	}
 	var err error
-	o, err = injector.WrapBean(o, ctx.container, ctx.injector)
+	o, err = injector.WrapBean(o, ctx.container, ctx.injector, ctx.injectLicMgr)
 	if err != nil {
 		return err
 	}

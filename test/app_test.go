@@ -174,6 +174,7 @@ type injectBean struct {
 	CustomerBean *dImpl   `inject:""`
 	CBwithName   *dImpl   `inject:"xx"`
 	CBwithName2  *dImpl   `inject:"xx"`
+	CBwithName3  *dImpl   `inject:"xx2"`
 	Slice        []a      `inject:""`
 	Strings      []string `inject:""`
 	Struct1      a        `inject:"struct1"`
@@ -224,6 +225,11 @@ func (v *injectBean) validate() {
 		xlog.Fatalf("expect: CBwithName %p equal CBwithName2 %p but not", v.CBwithName, v.CBwithName2)
 	} else {
 		xlog.Infof("CBwithName: %p  CBwithName2 %p", v.CBwithName, v.CBwithName2)
+	}
+	if v.CBwithName3.custom != v.A.Get() {
+		xlog.Fatalf("expect: CBwithName3 %s equal A %s but not", v.CBwithName3.custom, v.A.Get())
+	} else {
+		xlog.Infof("CBwithName3: %s  A %s", v.CBwithName3.custom, v.A.Get())
 	}
 
 	if len(v.Slice) == 0 {
@@ -364,6 +370,14 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	err = app.RegisterBeanByName("xx", bean.NewCustomBeanFactoryWithName(bean.SingletonFactory(func(a a) *dImpl {
 		return &dImpl{custom: a.Get()}
 	}), []string{"x"}, "", ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Singleton
+	err = app.RegisterBeanByName("xx2", bean.NewCustomBeanFactoryWithName(func(a a) *dImpl {
+		return &dImpl{custom: a.Get()}
+	}, []string{",omiterror"}, "", ""))
 	if err != nil {
 		t.Fatal(err)
 	}

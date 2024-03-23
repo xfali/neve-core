@@ -122,13 +122,17 @@ type defaultInjectFunctionHandler struct {
 	locker   sync.Mutex
 }
 
-func NewDefaultInjectFunctionHandler(logger xlog.Logger) *defaultInjectFunctionHandler {
+func NewDefaultInjectFunctionHandler(logger xlog.Logger, manager ListenerManager) *defaultInjectFunctionHandler {
 	ret := &defaultInjectFunctionHandler{
 		logger:  logger,
 		creator: create,
 	}
-	ret.lm = NewListenerManager(ret.logger)
+	ret.lm = manager
 	return ret
+}
+
+func (fi *defaultInjectFunctionHandler) SetListenerManager(manager ListenerManager) {
+	fi.lm = manager
 }
 
 func (fi *defaultInjectFunctionHandler) SetInjector(injector Injector) {
@@ -172,20 +176,20 @@ func (fi *defaultInjectFunctionHandler) addInvoker(invoker FunctionInjectInvoker
 }
 
 // FIXME: This isn't a elegant implementation (but works well).
-func WrapBean(o interface{}, container bean.Container, injector Injector) (interface{}, error) {
+func WrapBean(o interface{}, container bean.Container, injector Injector, manager ListenerManager) (interface{}, error) {
 	// 如果是CustomBeanFactory则需要将创建bean方法的参数自动代理注入，变为无参数仅返回的创建方法
 	if b, ok := o.(bean.CustomBeanFactory); ok {
 		fac := b.BeanFactory()
 		if reflect.TypeOf(fac).NumIn() > 0 {
 			names := b.InjectNames()
 			if len(names) > 0 {
-				f, err := WrapBeanFactoryByNameFunc(fac, names, container, injector)
+				f, err := WrapBeanFactoryByNameFunc(fac, names, container, injector, manager)
 				if err != nil {
 					return nil, err
 				}
 				return bean.NewCustomBeanFactory(f, b.InitMethodName(), b.DestroyMethodName()), nil
 			} else {
-				f, err := WrapBeanFactoryFunc(fac, container, injector)
+				f, err := WrapBeanFactoryFunc(fac, container, injector, manager)
 				if err != nil {
 					return nil, err
 				}
@@ -195,5 +199,5 @@ func WrapBean(o interface{}, container bean.Container, injector Injector) (inter
 			return o, nil
 		}
 	}
-	return WrapBeanFactoryFunc(o, container, injector)
+	return WrapBeanFactoryFunc(o, container, injector, manager)
 }

@@ -23,7 +23,7 @@ import (
 	"reflect"
 )
 
-func WrapBeanFactoryByNameFunc(o interface{}, names []string, container bean.Container, injector Injector) (interface{}, error) {
+func WrapBeanFactoryByNameFunc(o interface{}, names []string, container bean.Container, injector Injector, manager ListenerManager) (interface{}, error) {
 	ft := reflect.TypeOf(o)
 	if ft.Kind() != reflect.Func {
 		return o, nil
@@ -46,10 +46,13 @@ func WrapBeanFactoryByNameFunc(o interface{}, names []string, container bean.Con
 			values := make([]reflect.Value, pn)
 			for i := 0; i < pn; i++ {
 				o := reflect.New(ft.In(i)).Elem()
-				err := injector.InjectValue(container, names[i], o)
+				name, ls := manager.ParseListener(names[i])
+				err := injector.InjectValue(container, name, o)
 				if err != nil {
 					err = fmt.Errorf("Inject function [%s] param %d [%s] failed:error: %s\n", ft.String(), i, o.Type().String(), err.Error())
-					panic(err)
+					for _, l := range ls {
+						l.OnInjectFailed(err)
+					}
 				}
 				values[i] = o
 			}
@@ -61,7 +64,7 @@ func WrapBeanFactoryByNameFunc(o interface{}, names []string, container bean.Con
 	return o, nil
 }
 
-func WrapBeanFactoryFunc(o interface{}, container bean.Container, injector Injector) (interface{}, error) {
+func WrapBeanFactoryFunc(o interface{}, container bean.Container, injector Injector, manager ListenerManager) (interface{}, error) {
 	ft := reflect.TypeOf(o)
 	if ft.Kind() != reflect.Func {
 		return o, nil
@@ -81,10 +84,13 @@ func WrapBeanFactoryFunc(o interface{}, container bean.Container, injector Injec
 			values := make([]reflect.Value, pn)
 			for i := 0; i < pn; i++ {
 				o := reflect.New(ft.In(i)).Elem()
+				_, ls := manager.ParseListener("")
 				err := injector.InjectValue(container, "", o)
 				if err != nil {
 					err = fmt.Errorf("Inject function [%s] failed:error: %s\n", ft.Name(), err.Error())
-					panic(err)
+					for _, l := range ls {
+						l.OnInjectFailed(err)
+					}
 				}
 				values[i] = o
 			}

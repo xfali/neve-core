@@ -68,6 +68,10 @@ func New(opts ...Opt) *defaultInjector {
 	return ret
 }
 
+func (injector *defaultInjector) SetListenerManager(manager ListenerManager) {
+	injector.lm = manager
+}
+
 func (injector *defaultInjector) CanInject(o interface{}) bool {
 	v := reflect.ValueOf(o)
 	if v.Kind() == reflect.Interface {
@@ -450,8 +454,7 @@ func NewListenerManager(param ...xlog.Logger) *defaultListenerManager {
 	} else {
 		logger = xlog.GetLogger()
 	}
-	ret := &defaultListenerManager{
-	}
+	ret := &defaultListenerManager{}
 	ret.listeners.Store(RequiredTagField, NewRequiredListener())
 	ret.listeners.Store(OmitTagField, NewOmitErrorListener(logger))
 	return ret

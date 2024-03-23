@@ -1,8 +1,6 @@
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-logr/logr v0.2.0/go.mod h1:z6/tIYblkpsD+a4lm/fGIIU9mZ+XfAiaFtq7xTgseGU=
-github.com/xfali/fig v0.1.2 h1:BWgREu16b85FHCDBd585fEWkwJHHhKw2WUIL6fbvG78=
-github.com/xfali/fig v0.1.2/go.mod h1:My4IYRBWjrMtfwwIDQNwQiOqhjIDB6XrQ4hvF9lzby4=
 github.com/xfali/fig v0.1.3 h1:1d5XlAYfPr2G8tNML1/++jfImOkVilmX/ciYl/FY998=
 github.com/xfali/fig v0.1.3/go.mod h1:1uCMqJUWbIPT2AzK3bSsUZsTKZJy8c/gGu+unYKaba4=
 github.com/xfali/goutils v0.1.5 h1:oZOkXj4gNbNWiz721vhhha4VP4ab58W+DhkLCu3tZLM=
@@ -11,13 +9,11 @@ github.com/xfali/neve-utils v0.0.1 h1:S+NfOFYeqILzCylAvd9OI00JqXW1meNPScb9JIDZBa
 github.com/xfali/neve-utils v0.0.1/go.mod h1:qwnnleG/95zSAnGPi0zWk+eeeP0bUUckkqFKa3YWvMU=
 github.com/xfali/reflection v0.0.0-20220705135531-464ba3201671 h1:qEWf7AooyKZgyba5GQZ8mRQfp/BHVd1iRJTeNEjC8ek=
 github.com/xfali/reflection v0.0.0-20220705135531-464ba3201671/go.mod h1:fUkXamR1SOF8bp1WoOTu4yVgvRPtm5BzLX/YCS35Htw=
-github.com/xfali/xlog v0.1.1 h1:iB5ESlv2/Ig8biThcbJq2ivKewdeQfPFES7LB27ceRE=
 github.com/xfali/xlog v0.1.1/go.mod h1:W9nEm+z16pEh1HAOW9m/GuVk1h9FE29jv1byivczWcw=
 github.com/xfali/xlog v0.1.5 h1:32pFwECB/sYUUhqgQ4q2IChgIz8IXlO0HU5/KMli5Ys=
 github.com/xfali/xlog v0.1.5/go.mod h1:W9nEm+z16pEh1HAOW9m/GuVk1h9FE29jv1byivczWcw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
-gopkg.in/yaml.v2 v2.3.0 h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=
 gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
