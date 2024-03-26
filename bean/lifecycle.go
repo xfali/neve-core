@@ -1,5 +1,6 @@
 /*
- * Copyright 2022 Xiongfa Li.
+ * Copyright (C) 2024, Xiongfa Li.
+ * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +15,13 @@
  * limitations under the License.
  */
 
-package version
+package bean
 
-const NeveVersion = "v0.2.10.RELEASE"
+type LifeCycle string
+
+const (
+	PreAfterSet  LifeCycle = "bean.PreAfterSet"
+	PostAfterSet LifeCycle = "bean.PostAfterSet"
+	PreDestroy   LifeCycle = "bean.PreDestroy"
+	PostDestroy  LifeCycle = "bean.PostDestroy"
+)

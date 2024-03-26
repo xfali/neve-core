@@ -38,43 +38,48 @@ type CustomBeanFactory interface {
 	// 3、如果需要部分匹配，则需要自动匹配的参数对应的name填入空字符串""
 	InjectNames() []string
 
-	// BeanFactory返回值包含的初始化方法名，可为空
+	// 获得Bean生命周期相关的方法名
+	BeanLifeCycleMethodNames() map[LifeCycle]string
+
+	//Deprecated: BeanFactory返回值包含的初始化方法名，可为空
 	InitMethodName() string
 
-	// BeanFactory返回值包含的销毁方法名，可为空
+	//Deprecated: BeanFactory返回值包含的销毁方法名，可为空
 	DestroyMethodName() string
 }
 
+type beanFactoryOpt func(*defaultCustomBeanFactory)
+
 type defaultCustomBeanFactory struct {
-	beanFunc      interface{}
-	names         []string
-	initMethod    string
-	destroyMethod string
+	beanFunc       interface{}
+	names          []string
+	lifeCycleFuncs map[LifeCycle]string
 }
 
 func NewCustomBeanFactory(beanFunc interface{}, initMethod, destroyMethod string) *defaultCustomBeanFactory {
-	ft := reflect.TypeOf(beanFunc)
-	if err := verifyBeanFunctionEx(ft); err != nil {
-		panic(fmt.Errorf("NewCustomMethodBean with a invalid function type: %s, error: %v", ft.String(), err))
-	}
-	return &defaultCustomBeanFactory{
-		beanFunc:      beanFunc,
-		initMethod:    initMethod,
-		destroyMethod: destroyMethod,
-	}
+	return NewCustomBeanFactoryWithName(beanFunc, nil, initMethod, destroyMethod)
 }
 
 func NewCustomBeanFactoryWithName(beanFunc interface{}, names []string, initMethod, destroyMethod string) *defaultCustomBeanFactory {
+	return NewCustomBeanFactoryWithOpts(beanFunc,
+		CustomBeanFactoryOpts.Names(names),
+		CustomBeanFactoryOpts.PostAfterSet(initMethod),
+		CustomBeanFactoryOpts.PreDestroy(destroyMethod))
+}
+
+func NewCustomBeanFactoryWithOpts(beanFunc interface{}, opts ...beanFactoryOpt) *defaultCustomBeanFactory {
 	ft := reflect.TypeOf(beanFunc)
 	if err := verifyBeanFunctionEx(ft); err != nil {
 		panic(fmt.Errorf("NewCustomMethodBean with a invalid function type: %s", ft.String()))
 	}
-	return &defaultCustomBeanFactory{
-		beanFunc:      beanFunc,
-		names:         names,
-		initMethod:    initMethod,
-		destroyMethod: destroyMethod,
+	ret := &defaultCustomBeanFactory{
+		beanFunc:       beanFunc,
+		lifeCycleFuncs: map[LifeCycle]string{},
 	}
+	for _, opt := range opts {
+		opt(ret)
+	}
+	return ret
 }
 
 func (b *defaultCustomBeanFactory) BeanFactory() interface{} {
@@ -85,18 +90,73 @@ func (b *defaultCustomBeanFactory) InjectNames() []string {
 	return b.names
 }
 
+func (b *defaultCustomBeanFactory) BeanLifeCycleMethodNames() map[LifeCycle]string {
+	return b.lifeCycleFuncs
+}
+
 func (b *defaultCustomBeanFactory) InitMethodName() string {
-	return b.initMethod
+	return b.lifeCycleFuncs[PostAfterSet]
 }
 
 func (b *defaultCustomBeanFactory) DestroyMethodName() string {
-	return b.destroyMethod
+	return b.lifeCycleFuncs[PreDestroy]
 }
+
+type customBeanFactoryOpts struct {
+}
+
+func (o customBeanFactoryOpts) Names(names []string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		factory.names = names
+	}
+}
+
+func (o customBeanFactoryOpts) AddLifeCycleMethod(cycle LifeCycle, methodName string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		if methodName != "" {
+			factory.lifeCycleFuncs[cycle] = methodName
+		}
+	}
+}
+
+func (o customBeanFactoryOpts) PostAfterSet(methodName string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		if methodName != "" {
+			factory.lifeCycleFuncs[PostAfterSet] = methodName
+		}
+	}
+}
+
+func (o customBeanFactoryOpts) PreAfterSet(methodName string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		if methodName != "" {
+			factory.lifeCycleFuncs[PreAfterSet] = methodName
+		}
+	}
+}
+
+func (o customBeanFactoryOpts) PostDestroy(methodName string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		if methodName != "" {
+			factory.lifeCycleFuncs[PostDestroy] = methodName
+		}
+	}
+}
+
+func (o customBeanFactoryOpts) PreDestroy(methodName string) beanFactoryOpt {
+	return func(factory *defaultCustomBeanFactory) {
+		if methodName != "" {
+			factory.lifeCycleFuncs[PreDestroy] = methodName
+		}
+	}
+}
+
+var CustomBeanFactoryOpts customBeanFactoryOpts
 
 type customMethodBeanDefinition struct {
 	functionExDefinition
-	initializingFuncName string
-	disposableFuncName   string
+
+	lifeCycleFuncs map[LifeCycle]string
 }
 
 func newCustomMethodBeanDefinition(b CustomBeanFactory) (Definition, error) {
@@ -106,8 +166,7 @@ func newCustomMethodBeanDefinition(b CustomBeanFactory) (Definition, error) {
 	}
 	ret := &customMethodBeanDefinition{
 		functionExDefinition: *d.(*functionExDefinition),
-		initializingFuncName: b.InitMethodName(),
-		disposableFuncName:   b.DestroyMethodName(),
+		lifeCycleFuncs:       b.BeanLifeCycleMethodNames(),
 	}
 
 	return ret, ret.verifyCustomBeanFunction()
@@ -119,30 +178,18 @@ func checkPublic(name string) bool {
 
 func (d *customMethodBeanDefinition) verifyCustomBeanFunction() error {
 	rt := d.t
-	if d.initializingFuncName != "" {
-		if !checkPublic(d.initializingFuncName) {
-			return fmt.Errorf("Type %s init method %s is private ", reflection.GetTypeName(d.t), d.initializingFuncName)
-		}
-		m, ok := rt.MethodByName(d.initializingFuncName)
-		if !ok {
-			return fmt.Errorf("Type %s init method %s not found ", reflection.GetTypeName(d.t), d.initializingFuncName)
-		} else {
-			if m.Type.NumIn() == 0 {
-				return fmt.Errorf("Type %s init method %s cannot with params ", reflection.GetTypeName(d.t), d.initializingFuncName)
+	for k, v := range d.lifeCycleFuncs {
+		if v != "" {
+			if !checkPublic(v) {
+				return fmt.Errorf("Type %s [%s] method %s is private ", reflection.GetTypeName(d.t), k, v)
 			}
-		}
-	}
-
-	if d.disposableFuncName != "" {
-		if !checkPublic(d.initializingFuncName) {
-			return fmt.Errorf("Type %s destroy method %s is private ", reflection.GetTypeName(d.t), d.initializingFuncName)
-		}
-		m, ok := rt.MethodByName(d.disposableFuncName)
-		if !ok {
-			return fmt.Errorf("Type %s destroy method %s not found ", reflection.GetTypeName(d.t), d.disposableFuncName)
-		} else {
-			if m.Type.NumIn() == 0 {
-				return fmt.Errorf("Type %s destroy method %s cannot with params ", reflection.GetTypeName(d.t), d.disposableFuncName)
+			m, ok := rt.MethodByName(v)
+			if !ok {
+				return fmt.Errorf("Type %s [%s] method %s not found ", reflection.GetTypeName(d.t), k, v)
+			} else {
+				if m.Type.NumIn() != 1 {
+					return fmt.Errorf("Type %s [%s] method %s cannot with params ", reflection.GetTypeName(d.t), k, v)
+				}
 			}
 		}
 	}
@@ -165,7 +212,7 @@ func (d *customMethodBeanDefinition) callByName(value reflect.Value, name string
 		}
 		return nil
 	}
-	return fmt.Errorf("%s method %s is invalid", reflection.GetTypeName(value.Type()), d.initializingFuncName)
+	return fmt.Errorf("%s method %s is invalid", reflection.GetTypeName(value.Type()), name)
 }
 
 func (d *customMethodBeanDefinition) AfterSet() error {
@@ -175,14 +222,22 @@ func (d *customMethodBeanDefinition) AfterSet() error {
 		var errs errors.Errors
 		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
+				name := d.lifeCycleFuncs[PreAfterSet]
+				if name != "" {
+					err := d.callByName(i, name)
+					if err != nil {
+						_ = errs.AddError(err)
+					}
+				}
 				if d.t.Implements(InitializingType) {
 					err := i.Interface().(Initializing).BeanAfterSet()
 					if err != nil {
 						_ = errs.AddError(err)
 					}
 				}
-				if d.initializingFuncName != "" {
-					err := d.callByName(i, d.initializingFuncName)
+				name = d.lifeCycleFuncs[PostAfterSet]
+				if name != "" {
+					err := d.callByName(i, name)
 					if err != nil {
 						_ = errs.AddError(err)
 					}
@@ -204,14 +259,24 @@ func (d *customMethodBeanDefinition) Destroy() error {
 		var errs errors.Errors
 		for _, i := range d.instances.MapKeys() {
 			if i.IsValid() && !i.IsNil() {
-				if d.disposableFuncName != "" {
-					err := d.callByName(i, d.disposableFuncName)
+				name := d.lifeCycleFuncs[PreDestroy]
+				if name != "" {
+					err := d.callByName(i, name)
 					if err != nil {
 						_ = errs.AddError(err)
 					}
 				}
+
 				if d.t.Implements(DisposableType) {
 					err := i.Interface().(Disposable).BeanDestroy()
+					if err != nil {
+						_ = errs.AddError(err)
+					}
+				}
+
+				name = d.lifeCycleFuncs[PostAfterSet]
+				if name != "" {
+					err := d.callByName(i, name)
 					if err != nil {
 						_ = errs.AddError(err)
 					}
