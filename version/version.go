@@ -16,4 +16,4 @@
 
 package version
 
-const NeveVersion = "v0.2.10.RELEASE"
+const NeveVersion = "v0.2.11.RELEASE"

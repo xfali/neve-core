@@ -56,6 +56,20 @@ type defaultCustomBeanFactory struct {
 	lifeCycleFuncs map[LifeCycle]string
 }
 
+func CloneCustomBeanFactory(fac CustomBeanFactory, beanFunc ...interface{}) *defaultCustomBeanFactory {
+	ret := &defaultCustomBeanFactory{
+		names:          fac.InjectNames(),
+		lifeCycleFuncs: fac.BeanLifeCycleMethodNames(),
+	}
+	if len(beanFunc) > 0 {
+		ret.beanFunc = beanFunc[0]
+	} else {
+		ret.beanFunc = fac.BeanFactory()
+	}
+
+	return ret
+}
+
 func NewCustomBeanFactory(beanFunc interface{}, initMethod, destroyMethod string) *defaultCustomBeanFactory {
 	return NewCustomBeanFactoryWithName(beanFunc, nil, initMethod, destroyMethod)
 }

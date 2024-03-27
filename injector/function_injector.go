@@ -187,13 +187,13 @@ func WrapBean(o interface{}, container bean.Container, injector Injector, manage
 				if err != nil {
 					return nil, err
 				}
-				return bean.NewCustomBeanFactory(f, b.InitMethodName(), b.DestroyMethodName()), nil
+				return bean.CloneCustomBeanFactory(b, f), nil
 			} else {
 				f, err := WrapBeanFactoryFunc(fac, container, injector, manager)
 				if err != nil {
 					return nil, err
 				}
-				return bean.NewCustomBeanFactory(f, b.InitMethodName(), b.DestroyMethodName()), nil
+				return bean.CloneCustomBeanFactory(b, f), nil
 			}
 		} else {
 			return o, nil

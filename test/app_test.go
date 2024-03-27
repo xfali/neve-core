@@ -83,6 +83,11 @@ type dImpl struct {
 	custom string
 }
 
+type eImpl struct {
+	V      string `fig:"userdata.value"`
+	custom string
+}
+
 func (b *dImpl) BeanAfterSet() error {
 	xlog.Infof("dImpl BeanAfterSet set, V: %v %p", b.V, b)
 	if b.V != "this is a test" {
@@ -102,6 +107,21 @@ func (b *dImpl) DoInit() error {
 func (b *dImpl) DoDestroy() error {
 	xlog.Infoln("dImpl DoInit")
 	return nil
+}
+
+func (e *eImpl) PostConstruct() {
+	e.custom = "PostConstruct"
+}
+
+func (e *eImpl) BeanAfterSet() error {
+	if e.custom != "PostConstruct" {
+		xlog.Fatalln(`e.custom != "PostConstruct"`)
+	}
+	return nil
+}
+
+func (e *eImpl) PreDestroy() {
+	e.V = "PreDestroy"
 }
 
 type order1 struct {
@@ -165,20 +185,21 @@ type testBean interface {
 }
 
 type injectBean struct {
-	A            a        `inject:""`
-	B            a        `inject:"b"`
-	BS           *bImpl   `inject:"b,omiterror"`
-	Bf           a        `inject:"c"`
-	Afunc        *bImpl   `inject:"d"`
-	Bfunc        *bImpl   `inject:"e"`
-	CustomerBean *dImpl   `inject:""`
-	CBwithName   *dImpl   `inject:"xx"`
-	CBwithName2  *dImpl   `inject:"xx"`
-	CBwithName3  *dImpl   `inject:"xx2"`
-	Slice        []a      `inject:""`
-	Strings      []string `inject:""`
-	Struct1      a        `inject:"struct1"`
-	Struct2      a        `inject:"struct2"`
+	A             a        `inject:""`
+	B             a        `inject:"b"`
+	BS            *bImpl   `inject:"b,omiterror"`
+	Bf            a        `inject:"c"`
+	Afunc         *bImpl   `inject:"d"`
+	Bfunc         *bImpl   `inject:"e"`
+	CustomerBean  *dImpl   `inject:""`
+	CBwithName    *dImpl   `inject:"xx"`
+	CBwithName2   *dImpl   `inject:"xx"`
+	CBwithName3   *dImpl   `inject:"xx2"`
+	PostConstruct *eImpl   `inject:""`
+	Slice         []a      `inject:""`
+	Strings       []string `inject:""`
+	Struct1       a        `inject:"struct1"`
+	Struct2       a        `inject:"struct2"`
 }
 
 func (v *injectBean) validate() {
@@ -231,6 +252,18 @@ func (v *injectBean) validate() {
 	} else {
 		xlog.Infof("CBwithName3: %s  A %s", v.CBwithName3.custom, v.A.Get())
 	}
+
+	if v.PostConstruct.custom != "PostConstruct" {
+		xlog.Fatalf("expect: PostConstruct %s equal PostConstruct %s but not", v.PostConstruct.V, "PostConstruct")
+	} else {
+		xlog.Infof("PostConstruct: %s  A %s", v.PostConstruct.V, "PostConstruct")
+	}
+
+	//if v.PostConstruct.V != "PreDestroy" {
+	//	xlog.Fatalf("expect: PreDestroy %s equal PreDestroy %s but not", v.PostConstruct.V, "PreDestroy")
+	//} else {
+	//	xlog.Infof("PreDestroy: %s  A %s", v.PostConstruct.V, "PreDestroy")
+	//}
 
 	if len(v.Slice) == 0 {
 		xlog.Fatalln("expect larger than 0, but get ", len(v.Slice))
@@ -378,6 +411,15 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 	err = app.RegisterBeanByName("xx2", bean.NewCustomBeanFactoryWithName(func(a a) *dImpl {
 		return &dImpl{custom: a.Get()}
 	}, []string{",omiterror"}, "", ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = app.RegisterBean(bean.NewCustomBeanFactoryWithOpts(func(a a) *eImpl {
+		return &eImpl{custom: a.Get()}
+	}, bean.CustomBeanFactoryOpts.Names([]string{",omiterror"}),
+		bean.CustomBeanFactoryOpts.PreAfterSet("PostConstruct"),
+		bean.CustomBeanFactoryOpts.PostDestroy("PreDestroy")))
 	if err != nil {
 		t.Fatal(err)
 	}
