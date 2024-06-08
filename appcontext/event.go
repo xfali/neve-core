@@ -17,6 +17,7 @@
 package appcontext
 
 import (
+	"context"
 	"time"
 )
 
@@ -25,9 +26,32 @@ type ApplicationEvent interface {
 	OccurredTime() time.Time
 }
 
+type EventContextHolder interface {
+	// 获得事件的context
+	GetEventContext() context.Context
+}
+
+type ContextEvent interface {
+	ApplicationEvent
+	EventContextHolder
+}
+
 type ApplicationEventPublisher interface {
-	// 发送Context事件
+	// PublishEvent 发送Application事件（异步处理）
+	// 该方法不会阻塞，如果事件队列已满则直接返回错误
+	// e: Application事件
 	PublishEvent(e ApplicationEvent) error
+
+	// PostEvent 发送Application事件（异步处理）
+	// 如果事件队列已满则会阻塞，直至事件成功加入队列或者ctx被cancel
+	// ctx: 事件处理的context，不可为nil
+	// e: Application事件
+	PostEvent(ctx context.Context, e ApplicationEvent) error
+
+	// SendEvent 发送Application事件（同步处理）
+	// 该方法会阻塞，直至事件全部发送完成
+	// e: Application事件
+	SendEvent(e ApplicationEvent) error
 }
 
 type ApplicationEventListener interface {
@@ -62,8 +86,8 @@ type ApplicationEventProcessor interface {
 	ApplicationEventPublisher
 	ApplicationEventHandler
 
-	// 同步通知事件
-	// 不同于PublishEvent，NotifyEvent在Processor Close之后仍然能向Listener发送事件。
+	// Deprecated: 请使用SendEvent(ctx context.Context, e ApplicationEvent) error方法代替
+	// 同步通知事件,不同于PublishEvent，NotifyEvent在Processor Close之后仍然能向Listener发送事件。
 	NotifyEvent(e ApplicationEvent) error
 
 	// 启动处理器，如有初始化操作必须定义在该方法
@@ -71,40 +95,4 @@ type ApplicationEventProcessor interface {
 
 	// 停止处理，与Start方法对应，如有针对Start初始化的清理操作必须定义在该方法
 	Close() error
-}
-
-type BaseApplicationEvent struct {
-	timestamp time.Time
-}
-
-func (e *BaseApplicationEvent) ResetOccurredTime() {
-	e.timestamp = time.Now()
-}
-
-func (e *BaseApplicationEvent) OccurredTime() time.Time {
-	return e.timestamp
-}
-
-type ApplicationContextEvent struct {
-	BaseApplicationEvent
-	ctx ApplicationContext
-}
-
-func (e *ApplicationContextEvent) GetContext() ApplicationContext {
-	return e.ctx
-}
-
-// 服务启动后触发，Bean已经初始化完成，可以执行任意的业务逻辑
-type ContextStartedEvent struct {
-	ApplicationContextEvent
-}
-
-// 服务停止后触发，应尽快做清理工作
-type ContextStoppedEvent struct {
-	ApplicationContextEvent
-}
-
-// 已到达ApplicationContext生命周期末端，应用即将退出
-type ContextClosedEvent struct {
-	ApplicationContextEvent
 }

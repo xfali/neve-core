@@ -604,8 +604,9 @@ type customerEvent struct {
 }
 
 func newCustomerEvent(payload string) *customerEvent {
-	ret := &customerEvent{}
-	ret.ResetOccurredTime()
+	ret := &customerEvent{
+		BaseApplicationEvent: *appcontext.NewBaseApplicationEvent(),
+	}
 	ret.payload = payload
 	return ret
 }
@@ -632,9 +633,9 @@ func (l *listener) OnApplicationEvent(event appcontext.ApplicationEvent) {
 
 func (l *listener) EventStarted(event *appcontext.ContextStartedEvent) {
 	l.t.Log("ContextStartedEvent:", event.OccurredTime())
-	event.GetContext().PublishEvent(newCustomerEvent("hello world"))
-	event.GetContext().PublishEvent(appcontext.NewPayloadApplicationEvent("hello world"))
-	event.GetContext().PublishEvent(appcontext.NewPayloadApplicationEvent(&aImpl{v: "hello world2"}))
+	event.GetAppContext().PublishEvent(newCustomerEvent("hello world"))
+	event.GetAppContext().PublishEvent(appcontext.NewPayloadApplicationEvent("hello world"))
+	event.GetAppContext().PublishEvent(appcontext.NewPayloadApplicationEvent(&aImpl{v: "hello world2"}))
 }
 
 func (l *listener) EventStopped(event *appcontext.ContextStoppedEvent) {

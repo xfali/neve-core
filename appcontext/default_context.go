@@ -17,6 +17,7 @@
 package appcontext
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/xfali/fig"
@@ -276,6 +277,14 @@ func (ctx *defaultApplicationContext) PublishEvent(e ApplicationEvent) error {
 	return ctx.eventProc.PublishEvent(e)
 }
 
+func (ctx *defaultApplicationContext) PostEvent(context context.Context, e ApplicationEvent) error {
+	return ctx.eventProc.PostEvent(context, e)
+}
+
+func (ctx *defaultApplicationContext) SendEvent(e ApplicationEvent) error {
+	return ctx.eventProc.SendEvent(e)
+}
+
 func (ctx *defaultApplicationContext) Start() error {
 	ctx.printCtxInfo()
 	// 第一次初始化，注入所有对象
@@ -407,28 +416,19 @@ func (ctx *defaultApplicationContext) notifyStarted() {
 	if ctx.disableEvent {
 		return
 	}
-	e := &ContextStartedEvent{}
-	e.ResetOccurredTime()
-	e.ctx = ctx
-	ctx.PublishEvent(e)
+	_ = ctx.PublishEvent(NewContextStartedEvent(ctx))
 }
 
 func (ctx *defaultApplicationContext) notifyClosed() {
 	if ctx.disableEvent {
 		return
 	}
-	e := &ContextClosedEvent{}
-	e.ResetOccurredTime()
-	e.ctx = ctx
-	ctx.eventProc.NotifyEvent(e)
+	_ = ctx.eventProc.SendEvent(NewContextClosedEvent(ctx))
 }
 
 func (ctx *defaultApplicationContext) notifyStopped() {
 	if ctx.disableEvent {
 		return
 	}
-	e := &ContextStoppedEvent{}
-	e.ResetOccurredTime()
-	e.ctx = ctx
-	ctx.eventProc.NotifyEvent(e)
+	_ = ctx.eventProc.SendEvent(NewContextStoppedEvent(ctx))
 }

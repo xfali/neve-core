@@ -17,6 +17,7 @@
 package appcontext
 
 import (
+	"context"
 	"errors"
 	"github.com/xfali/xlog"
 	"reflect"
@@ -153,13 +154,14 @@ func (h *defaultEventProcessor) Close() (err error) {
 	return
 }
 
-func (h *defaultEventProcessor) notifyEvent(e ApplicationEvent) {
+func (h *defaultEventProcessor) notifyEvent(e ApplicationEvent) error {
 	h.listenerLock.Lock()
 	defer h.listenerLock.Unlock()
 
 	for _, v := range h.listeners {
 		v.OnApplicationEvent(e)
 	}
+	return nil
 }
 
 func (h *defaultEventProcessor) eventLoop() {
@@ -176,12 +178,18 @@ func (h *defaultEventProcessor) eventLoop() {
 		case <-h.stopChan:
 			size := len(h.eventChan)
 			for i := 0; i < size; i++ {
-				h.notifyEvent(<-h.eventChan)
+				err := h.notifyEvent(<-h.eventChan)
+				if err != nil {
+					h.logger.Errorln("Event Processor event loop notify event failed: ", err)
+				}
 			}
 			return
 		case e, ok := <-h.eventChan:
 			if ok {
-				h.notifyEvent(e)
+				err := h.notifyEvent(e)
+				if err != nil {
+					h.logger.Errorln("Event Processor event loop notify event failed: ", err)
+				}
 			}
 		}
 	}
@@ -205,9 +213,24 @@ func (h *defaultEventProcessor) PublishEvent(e ApplicationEvent) error {
 	}
 }
 
+func (h *defaultEventProcessor) PostEvent(ctx context.Context, e ApplicationEvent) error {
+	if e == nil {
+		return errors.New("event is nil. ")
+	}
+	select {
+	case h.eventChan <- e:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (h *defaultEventProcessor) SendEvent(e ApplicationEvent) error {
+	return h.notifyEvent(e)
+}
+
 func (h *defaultEventProcessor) NotifyEvent(e ApplicationEvent) error {
-	h.notifyEvent(e)
-	return nil
+	return h.notifyEvent(e)
 }
 
 func (h *defaultEventProcessor) createConsumerListener() ApplicationEventConsumerListener {
@@ -356,8 +379,9 @@ func NewPayloadApplicationEvent(payload interface{}) *PayloadApplicationEvent {
 	if payload == nil {
 		return nil
 	}
-	e := PayloadApplicationEvent{}
-	e.ResetOccurredTime()
+	e := PayloadApplicationEvent{
+		BaseApplicationEvent: *NewBaseApplicationEvent(),
+	}
 	e.payload = payload
 	return &e
 }
@@ -383,6 +407,14 @@ func (p *dummyEventProc) NotifyEvent(e ApplicationEvent) error {
 }
 
 func (p *dummyEventProc) PublishEvent(e ApplicationEvent) error {
+	panic("Application event process: Disabled")
+}
+
+func (p *dummyEventProc) PostEvent(ctx context.Context, e ApplicationEvent) error {
+	panic("Application event process: Disabled")
+}
+
+func (p *dummyEventProc) SendEvent(e ApplicationEvent) error {
 	panic("Application event process: Disabled")
 }
 
