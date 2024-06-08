@@ -4,6 +4,8 @@ neve:
     banner: "assets/banner.txt"
     #bannerMode: off
     #eventMode: off
+    quit:
+      sleepSec: 5
   inject:
     disable: false
     workers: 1

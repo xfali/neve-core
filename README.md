@@ -23,6 +23,8 @@ neve:
     name: Neve test application
     banner: "banner.txt"
     bannerMode: off
+    quit:
+      sleepSec: 5
   inject:
     disable: false
     workers: 1

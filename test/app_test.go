@@ -327,6 +327,9 @@ func TestApp(t *testing.T) {
 
 	t.Run("change default tag", func(t *testing.T) {
 		injector.InjectTagName = "Autowired"
+		defer func() {
+			injector.InjectTagName = "inject"
+		}()
 		app := neve.NewFileConfigApplication("assets/application-test.yaml")
 		o := &injectBeanB{}
 		testApp(app, t, o)

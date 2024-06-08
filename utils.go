@@ -19,9 +19,39 @@ package neve
 import (
 	"context"
 	"github.com/xfali/neve-core/application"
+	"github.com/xfali/neve-core/errors"
 	"github.com/xfali/xlog"
+	"time"
 )
 
 func HandlerSignal(logger xlog.Logger, closers ...func() error) (err error) {
-	return application.NewSignalWaiter(application.SignalWaiterOpts.SetLogger(logger)).Wait(context.Background(), closers...)
+	defer func(pErr *error) {
+		*pErr = Quit(logger, 3*time.Second, closers...)
+	}(&err)
+	_ = application.NewSignalWaiter(application.SignalWaiterOpts.SetLogger(logger)).Wait(context.Background())
+	return
+}
+
+func Quit(logger xlog.Logger, sleepTime time.Duration, closers ...func() error) error {
+	errs := &errors.LockedErrors{}
+	time.Sleep(100 * time.Millisecond)
+	if len(closers) > 0 {
+		go func() {
+			for i := range closers {
+				cErr := closers[i]()
+				if cErr != nil {
+					logger.Errorln(cErr)
+					errs.AddError(cErr)
+				}
+			}
+		}()
+	}
+	if sleepTime > 0 {
+		time.Sleep(sleepTime)
+	}
+	logger.Infof("------ Process exited ------")
+	if errs.Empty() {
+		return nil
+	}
+	return errs
 }

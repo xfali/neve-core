@@ -18,20 +18,18 @@ package application
 
 import (
 	"context"
-	"github.com/xfali/neve-core/errors"
 	"github.com/xfali/xlog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 )
 
 type SignalWaiter interface {
 	// Wait 等待信号，直到获得预期的信号后退出
 	// 参数 ctx: 监听ctx，如果ctx Done则同样退出
-	// 参数 closers: 退出时执行的关闭方法
-	// 返回 err: 关闭的错误列表
-	Wait(ctx context.Context, closers ...func() error) (err error)
+	// 返回 err: 等待信号错误
+	Wait(ctx context.Context) (err error)
 
 	// Notify 主动发送信号
 	// 参数 signal: 发送的信号
@@ -50,8 +48,10 @@ type defaultWaiter struct {
 	exitSignals   []os.Signal
 	ignoreSignals []os.Signal
 	ch            chan os.Signal
-	ctx           context.Context
-	cancel        context.CancelFunc
+	
+	ctx     context.Context
+	cancel  context.CancelFunc
+	ctxLock sync.Mutex
 }
 
 func NewSignalWaiter(opts ...SignalWaiterOpt) *defaultWaiter {
@@ -69,18 +69,20 @@ func NewSignalWaiter(opts ...SignalWaiterOpt) *defaultWaiter {
 	return ret
 }
 
-func (h *defaultWaiter) Wait(ctx context.Context, closers ...func() error) error {
+func (h *defaultWaiter) Wait(ctx context.Context) error {
+	h.ctxLock.Lock()
 	h.ctx, h.cancel = context.WithCancel(ctx)
+	h.ctxLock.Unlock()
 	for {
 		select {
 		case <-h.ctx.Done():
 			h.logger.Infof("Context done, error: %v, closing...", ctx.Err())
-			return h.close(closers...)
+			return ctx.Err()
 		case si := <-h.ch:
 			for _, v := range h.exitSignals {
 				if si == v {
 					h.logger.Infof("Got a signal %s, closing...\n", si.String())
-					return h.close(closers...)
+					return nil
 				}
 			}
 			ignore := false
@@ -108,29 +110,11 @@ func (h *defaultWaiter) Notify(signal os.Signal) error {
 }
 
 func (h *defaultWaiter) Stop() {
+	h.ctxLock.Lock()
+	defer h.ctxLock.Unlock()
 	if h.cancel != nil {
 		h.cancel()
 	}
-}
-
-func (h *defaultWaiter) close(closers ...func() error) error {
-	errlist := &errors.LockedErrors{}
-	time.Sleep(100 * time.Millisecond)
-	go func() {
-		for i := range closers {
-			cErr := closers[i]()
-			if cErr != nil {
-				h.logger.Errorln(cErr)
-				errlist.AddError(cErr)
-			}
-		}
-	}()
-	time.Sleep(3 * time.Second)
-	h.logger.Infof("------ Process exited ------")
-	if errlist.Empty() {
-		return nil
-	}
-	return errlist
 }
 
 type signalWaiterOpts struct {

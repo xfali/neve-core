@@ -24,6 +24,8 @@ import (
 	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/xlog"
+	"strconv"
+	"time"
 )
 
 type Application interface {
@@ -56,12 +58,18 @@ type Application interface {
 	Stop()
 }
 
+const (
+	QuitSleepTime = 3 * time.Second
+)
+
 type RegisterOpt = bean.RegisterOpt
 
 type FileConfigApplication struct {
 	ctx    appcontext.ApplicationContext
 	waiter application.SignalWaiter
 	logger xlog.Logger
+
+	quitSleepTime time.Duration
 }
 
 type Opt func(*FileConfigApplication)
@@ -72,8 +80,9 @@ func NewApplication(prop fig.Properties, opts ...Opt) *FileConfigApplication {
 		return nil
 	}
 	ret := &FileConfigApplication{
-		ctx:    appcontext.NewDefaultApplicationContext(),
-		logger: xlog.GetLogger(),
+		ctx:           appcontext.NewDefaultApplicationContext(),
+		logger:        xlog.GetLogger(),
+		quitSleepTime: QuitSleepTime,
 	}
 
 	ret.waiter = application.NewSignalWaiter(application.SignalWaiterOpts.SetLogger(ret.logger))
@@ -85,6 +94,15 @@ func NewApplication(prop fig.Properties, opts ...Opt) *FileConfigApplication {
 	if err != nil {
 		ret.logger.Fatalln(err)
 		return nil
+	}
+
+	sleepTime := prop.Get("neve.application.quit.sleepSec", "")
+	if sleepTime != "" {
+		if t, pErr := strconv.Atoi(sleepTime); pErr == nil {
+			if t >= 0 {
+				ret.quitSleepTime = time.Duration(t) * time.Second
+			}
+		}
 	}
 
 	return ret
@@ -117,12 +135,19 @@ func (app *FileConfigApplication) Run() error {
 	return app.RunWithContext(context.Background())
 }
 
-func (app *FileConfigApplication) RunWithContext(ctx context.Context) error {
-	err := app.ctx.Start()
+func (app *FileConfigApplication) RunWithContext(ctx context.Context) (err error) {
+	err = app.ctx.Start()
 	if err != nil {
 		return err
 	}
-	return app.waiter.Wait(ctx, app.ctx.Close)
+	defer func(pErr *error) {
+		*pErr = Quit(app.logger, app.quitSleepTime, app.ctx.Close)
+		if *pErr != nil {
+			app.logger.Errorln(*pErr)
+		}
+	}(&err)
+	_ = app.waiter.Wait(ctx)
+	return
 }
 
 func (app *FileConfigApplication) Stop() {
@@ -144,6 +169,12 @@ func OptSetLogger(logger xlog.Logger) Opt {
 func OptSetSignalWaiter(waiter application.SignalWaiter) Opt {
 	return func(application *FileConfigApplication) {
 		application.waiter = waiter
+	}
+}
+
+func OptSetQuitSleepTime(t time.Duration) Opt {
+	return func(application *FileConfigApplication) {
+		application.quitSleepTime = t
 	}
 }
 
