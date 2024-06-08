@@ -26,7 +26,6 @@ import (
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/neve-utils/neverror"
 	"github.com/xfali/xlog"
-	"os"
 	"testing"
 	"time"
 )
@@ -434,8 +433,12 @@ func testApp(app neve.Application, t *testing.T, o interface{}) {
 		t.Fatal(err)
 	}
 
-	go app.Run()
-	time.Sleep(2 * time.Minute)
+	go func() {
+		time.Sleep(5 * time.Second)
+		app.Stop()
+	}()
+	app.Run()
+
 }
 
 func TestAppCircleDependency(t *testing.T) {
@@ -506,9 +509,12 @@ func testvalue(app neve.Application, t *testing.T, o interface{}) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go app.Run()
-
-	time.Sleep(2 * time.Second)
+	go func() {
+		time.Sleep(2 * time.Second)
+		app.Stop()
+	}()
+	err = app.Run()
+	t.Log(err)
 
 	t.Log(v.V)
 	if v.V != "this is a test" {
@@ -545,7 +551,7 @@ func (p *testProcessor) Process() error {
 		v.validate()
 	}
 	xlog.Infoln("all pass, exit")
-	os.Exit(0)
+	//os.Exit(0)
 	return nil
 }
 
@@ -589,8 +595,13 @@ func testOrder(app neve.Application, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go app.Run()
-	time.Sleep(2 * time.Second)
+	go func() {
+		time.Sleep(2 * time.Second)
+		app.Stop()
+	}()
+	err = app.Run()
+	t.Log(err)
+
 }
 
 type listener struct {
@@ -701,7 +712,6 @@ func TestListener(t *testing.T) {
 	t.Run("default enable", func(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml")
 		testListener(app, t)
-		time.Sleep(2 * time.Second)
 	})
 
 	t.Run("default disable", func(t *testing.T) {
@@ -712,7 +722,6 @@ func TestListener(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml",
 			neve.OptSetApplicationContext(appcontext.NewDefaultApplicationContext(appcontext.OptDisableEvent())))
 		testListener(app, t)
-		time.Sleep(2 * time.Second)
 	})
 }
 
@@ -760,7 +769,12 @@ func testListener(app neve.Application, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go app.Run()
+	go func() {
+		time.Sleep(2 * time.Second)
+		app.Stop()
+	}()
+	err = app.Run()
+	t.Log(err)
 }
 
 type aware struct {
@@ -778,7 +792,6 @@ func TestAware(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		app := neve.NewFileConfigApplication("assets/application-test.yaml")
 		testAware(app, t)
-		time.Sleep(2 * time.Second)
 	})
 }
 
@@ -788,5 +801,10 @@ func testAware(app neve.Application, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go app.Run()
+	go func() {
+		time.Sleep(2 * time.Second)
+		app.Stop()
+	}()
+	err = app.Run()
+	t.Log(err)
 }

@@ -17,6 +17,7 @@
 package test
 
 import (
+	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/boot"
 	"github.com/xfali/neve-core/processor"
 	"github.com/xfali/xlog"
@@ -43,10 +44,77 @@ func init() {
 	if err != nil {
 		xlog.Fatal(err)
 	}
+	err = boot.RegisterBeanByName("x", &aImpl{v: "x value"})
+	if err != nil {
+		xlog.Fatal(err)
+	}
 	// 注意，此处如果使用RegisterBean会使用a的类型名称注册构造方法
 	err = boot.RegisterBeanByName("c", func() a {
 		return &bImpl{V: "hello world"}
 	})
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBeanByName("d", func(a *aImpl) *bImpl {
+		return &bImpl{custom: a.v}
+	})
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBeanByName("struct1", func() a {
+		return bImpl{Payload: "this is struct 1"}
+	})
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBeanByName("struct2", func() a {
+		return bImpl{Payload: "this is struct 2"}
+	})
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBeanByName("e", testTmp{}.t)
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBean(bean.NewCustomBeanFactory(func(a *aImpl) *dImpl {
+		return &dImpl{custom: a.v}
+	}, "DoInit", "DoDestroy"))
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	// Singleton
+	err = boot.RegisterBeanByName("xx", bean.NewCustomBeanFactoryWithName(bean.SingletonFactory(func(a a) *dImpl {
+		return &dImpl{custom: a.Get()}
+	}), []string{"x"}, "", ""))
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	// Singleton
+	err = boot.RegisterBeanByName("xx2", bean.NewCustomBeanFactoryWithName(func(a a) *dImpl {
+		return &dImpl{custom: a.Get()}
+	}, []string{",omiterror"}, "", ""))
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBean(bean.NewCustomBeanFactoryWithOpts(func(a a) *eImpl {
+		return &eImpl{custom: a.Get()}
+	}, bean.CustomBeanFactoryOpts.Names([]string{",omiterror"}),
+		bean.CustomBeanFactoryOpts.PreAfterSet("PostConstruct"),
+		bean.CustomBeanFactoryOpts.PostDestroy("PreDestroy")))
+	if err != nil {
+		xlog.Fatal(err)
+	}
+
+	err = boot.RegisterBean([]string{"hello", "world"})
 	if err != nil {
 		xlog.Fatal(err)
 	}
@@ -58,6 +126,11 @@ func init() {
 }
 
 func TestBoot(t *testing.T) {
-	go boot.Run()
-	time.Sleep(2 * time.Second)
+	go func() {
+		time.Sleep(2 * time.Second)
+		boot.Stop()
+		boot.Stop()
+	}()
+	err := boot.Run()
+	t.Log(err)
 }

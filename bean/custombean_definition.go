@@ -240,20 +240,20 @@ func (d *customMethodBeanDefinition) AfterSet() error {
 				if name != "" {
 					err := d.callByName(i, name)
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 				if d.t.Implements(InitializingType) {
 					err := i.Interface().(Initializing).BeanAfterSet()
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 				name = d.lifeCycleFuncs[PostAfterSet]
 				if name != "" {
 					err := d.callByName(i, name)
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 			}
@@ -277,14 +277,14 @@ func (d *customMethodBeanDefinition) Destroy() error {
 				if name != "" {
 					err := d.callByName(i, name)
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 
 				if d.t.Implements(DisposableType) {
 					err := i.Interface().(Disposable).BeanDestroy()
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 
@@ -292,7 +292,7 @@ func (d *customMethodBeanDefinition) Destroy() error {
 				if name != "" {
 					err := d.callByName(i, name)
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 			}

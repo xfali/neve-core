@@ -17,6 +17,7 @@
 package boot
 
 import (
+	"context"
 	"flag"
 	"github.com/xfali/neve-core"
 	"github.com/xfali/neve-core/bean"
@@ -82,7 +83,17 @@ func instance() neve.Application {
 	return gApp
 }
 
-// 启动全局Application
+// Run 启动全局Application
 func Run() error {
 	return instance().Run()
+}
+
+// RunWithContext 带context的启动全局Application
+func RunWithContext(ctx context.Context) error {
+	return instance().RunWithContext(ctx)
+}
+
+// Stop 强制停止全局Application
+func Stop() {
+	instance().Stop()
 }

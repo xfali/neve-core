@@ -17,38 +17,50 @@
 package neve
 
 import (
+	"context"
 	"github.com/xfali/fig"
 	"github.com/xfali/neve-core/appcontext"
+	"github.com/xfali/neve-core/application"
 	"github.com/xfali/neve-core/bean"
 	"github.com/xfali/neve-core/injector"
 	"github.com/xfali/xlog"
 )
 
 type Application interface {
-	// 注册对象
+	// RegisterBean 注册对象
 	// 支持注册
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBean(o interface{}, opts ...RegisterOpt) error
 
-	// 使用指定名称注册对象
+	// RegisterBeanByName 使用指定名称注册对象
 	// 支持注册
 	//  1、interface、struct指针，注册名称使用【类型名称】；
 	//  2、struct/interface的构造函数 func() TYPE，注册名称使用【返回值的类型名称】。
 	// opts添加bean注册的配置，详情查看bean.RegisterOpt
 	RegisterBeanByName(name string, o interface{}, opts ...RegisterOpt) error
 
+	// AddListeners 增加时间监听器
+	// 监听器应尽快处理事件，耗时操作请使用协程
 	AddListeners(listeners ...interface{})
 
-	// 启动应用容器
+	// Run 启动应用容器
 	Run() error
+
+	// RunWithContext 启动应用容器
+	// 参数ctx: 应用ctx，如果ctx Done则退出
+	RunWithContext(ctx context.Context) error
+
+	// Stop 强制退出
+	Stop()
 }
 
 type RegisterOpt = bean.RegisterOpt
 
 type FileConfigApplication struct {
 	ctx    appcontext.ApplicationContext
+	waiter application.SignalWaiter
 	logger xlog.Logger
 }
 
@@ -64,6 +76,7 @@ func NewApplication(prop fig.Properties, opts ...Opt) *FileConfigApplication {
 		logger: xlog.GetLogger(),
 	}
 
+	ret.waiter = application.NewSignalWaiter(application.SignalWaiterOpts.SetLogger(ret.logger))
 	for _, opt := range opts {
 		opt(ret)
 	}
@@ -101,11 +114,19 @@ func (app *FileConfigApplication) AddListeners(listeners ...interface{}) {
 }
 
 func (app *FileConfigApplication) Run() error {
+	return app.RunWithContext(context.Background())
+}
+
+func (app *FileConfigApplication) RunWithContext(ctx context.Context) error {
 	err := app.ctx.Start()
 	if err != nil {
 		return err
 	}
-	return HandlerSignal(app.logger, app.ctx.Close)
+	return app.waiter.Wait(ctx, app.ctx.Close)
+}
+
+func (app *FileConfigApplication) Stop() {
+	app.waiter.Stop()
 }
 
 func OptSetApplicationContext(ctx appcontext.ApplicationContext) Opt {
@@ -117,6 +138,12 @@ func OptSetApplicationContext(ctx appcontext.ApplicationContext) Opt {
 func OptSetLogger(logger xlog.Logger) Opt {
 	return func(application *FileConfigApplication) {
 		application.logger = logger
+	}
+}
+
+func OptSetSignalWaiter(waiter application.SignalWaiter) Opt {
+	return func(application *FileConfigApplication) {
+		application.waiter = waiter
 	}
 }
 

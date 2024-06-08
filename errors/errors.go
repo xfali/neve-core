@@ -17,7 +17,18 @@
 
 package errors
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
+
+type ErrList interface {
+	Empty() bool
+
+	AddError(e error)
+
+	Error() string
+}
 
 type Errors []error
 
@@ -25,9 +36,8 @@ func (es Errors) Empty() bool {
 	return len(es) == 0
 }
 
-func (es *Errors) AddError(e error) *Errors {
+func (es *Errors) AddError(e error) {
 	*es = append(*es, e)
-	return es
 }
 
 func (es Errors) Error() string {
@@ -35,6 +45,36 @@ func (es Errors) Error() string {
 	for i := range es {
 		buf.WriteString(es[i].Error())
 		if i < len(es)-1 {
+			buf.WriteString(",")
+		}
+	}
+	return buf.String()
+}
+
+type LockedErrors struct {
+	errs   []error
+	locker sync.RWMutex
+}
+
+func (e *LockedErrors) Empty() bool {
+	e.locker.RLock()
+	defer e.locker.RUnlock()
+	return len(e.errs) == 0
+}
+
+func (e *LockedErrors) AddError(err error) {
+	e.locker.Lock()
+	defer e.locker.Unlock()
+	e.errs = append(e.errs, e)
+}
+
+func (e *LockedErrors) Error() string {
+	e.locker.RLock()
+	defer e.locker.RUnlock()
+	buf := strings.Builder{}
+	for i := range e.errs {
+		buf.WriteString(e.errs[i].Error())
+		if i < len(e.errs)-1 {
 			buf.WriteString(",")
 		}
 	}

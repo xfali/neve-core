@@ -125,7 +125,7 @@ func (d *functionExDefinition) AfterSet() error {
 				if v, ok := i.Interface().(Initializing); ok {
 					err := v.BeanAfterSet()
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 			}
@@ -148,7 +148,7 @@ func (d *functionExDefinition) Destroy() error {
 				if v, ok := i.Interface().(Disposable); ok {
 					err := v.BeanDestroy()
 					if err != nil {
-						_ = errs.AddError(err)
+						errs.AddError(err)
 					}
 				}
 			}
@@ -173,7 +173,7 @@ func (d *functionExDefinition) Classify(classifier Classifier) (bool, error) {
 				ok = ret
 			}
 			if err != nil {
-				_ = errs.AddError(err)
+				errs.AddError(err)
 			}
 		}
 	}
